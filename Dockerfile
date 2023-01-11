@@ -4,7 +4,9 @@ RUN apt-get update
 RUN apt-get install -y openssl
 
 WORKDIR /app
-RUN chmod +x "/usr/local/bin/docker-entrypoint.sh"
+
+COPY ./docker-entrypoint.sh /
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 COPY package.json ./
 COPY package-lock.json ./
