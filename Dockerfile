@@ -1,10 +1,10 @@
 FROM node:16-slim
 
-RUN ["chmod", "+x", "/usr/src/app/docker-entrypoint.sh"]
 RUN apt-get update
 RUN apt-get install -y openssl
 
 WORKDIR /app
+RUN ["chmod", "+x", "/usr/src/app/docker-entrypoint.sh"]
 
 COPY package.json ./
 COPY package-lock.json ./
