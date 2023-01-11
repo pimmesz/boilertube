@@ -6,7 +6,7 @@ RUN apt-get install -y openssl
 WORKDIR /app
 
 COPY package.json ./
-COPY *.lock ./
+COPY package-lock.json ./
 
 RUN npm install
 
