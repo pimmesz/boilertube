@@ -14,6 +14,6 @@ COPY . .
 
 RUN npm run build
 
-EXPOSE 8080
+EXPOSE 3003
 
-CMD node app.js
+CMD node server.js
