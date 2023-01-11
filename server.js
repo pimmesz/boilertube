@@ -27,8 +27,6 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 	const fromDate = req.query.fromdate;
 	const toDate = req.query.todate;
 
-	console.log(fromDate, toDate);
-
 	if (fromDate && toDate) {
 		const betweenDateVideos = await getAllVideosBetweenDates(fromDate, toDate);
 
@@ -121,11 +119,11 @@ function getVideoInfoPerYoutubePage(pageToken = "", allowLoop = true) {
 	const url = pageToken
 		? "https://www.googleapis.com/youtube/v3/search?pageToken=" +
 		  pageToken +
-		  "&part=snippet&maxResults=50&order=date&q=site%3Ayoutube.com&channelId=" +
+		  "&part=snippet&order=date&q=site%3Ayoutube.com&channelId=" +
 		  process.env.YOUTUBE_CHANNEL_ID +
 		  "&key=" +
 		  process.env.YOUTUBE_API_KEY
-		: "https://www.googleapis.com/youtube/v3/search?&part=snippet&maxResults=50&order=date&q=site%3Ayoutube.com&channelId=" +
+		: "https://www.googleapis.com/youtube/v3/search?&part=snippet&order=date&q=site%3Ayoutube.com&channelId=" +
 		  process.env.YOUTUBE_CHANNEL_ID +
 		  "&key=" +
 		  process.env.YOUTUBE_API_KEY;
@@ -168,7 +166,7 @@ function getVideoInfoPerYoutubePage(pageToken = "", allowLoop = true) {
 				await saveVideosWithDetails(filteredVideosWithDetails);
 			}
 
-			console.log(!!nextPageToken, allowLoop);
+			console.log(nextPageToken, !!nextPageToken, allowLoop);
 			if (nextPageToken && allowLoop) {
 				console.log("videos in database - ", await prisma.video.count());
 				getVideoInfoPerYoutubePage(nextPageToken, allowLoop);

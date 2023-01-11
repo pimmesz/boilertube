@@ -64,7 +64,7 @@ export default {
 			fromDate.toISOString();
 
 			axios
-				.get("http://localhost:3001/boilerroom-videos", {
+				.get("http://localhost:3003/boilerroom-videos", {
 					params: {
 						fromdate: fromDate,
 					},
@@ -75,7 +75,6 @@ export default {
 						(video: any) => (video.thumbnails = JSON.parse(video.thumbnails))
 					);
 					this.boilerRoomVideos = data;
-					console.log(this.boilerRoomVideos);
 				})
 				.catch((error) => {
 					console.log(error);
