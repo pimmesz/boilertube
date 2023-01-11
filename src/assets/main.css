@@ -1,0 +1,74 @@
+body {
+	font-family: Roboto, "Helvetica Neue", sans-serif;
+	background: linear-gradient(90deg, #e22828, #ff8c2f);
+	min-height: 100vh;
+}
+
+.v-application__wrap {
+	color: white;
+}
+
+.nmaterial-icons {
+	/* Support for all WebKit browsers. */
+	-webkit-font-smoothing: antialiased;
+	/* Support for Safari and Chrome. */
+	text-rendering: optimizeLegibility;
+
+	/* Support for Firefox. */
+	-moz-osx-font-smoothing: grayscale;
+
+	/* Support for IE. */
+	font-feature-settings: "liga";
+}
+
+.isLoading {
+	cursor: progress;
+}
+
+.flex {
+	display: flex;
+}
+
+.flex--center {
+	align-items: center;
+	justify-content: center;
+}
+
+.has-margin-bottom-16 {
+	margin-bottom: 16px;
+}
+
+.has-margin-right-16 {
+	margin-right: 16px;
+}
+
+.has-margin-right-8 {
+	margin-right: 8px;
+}
+
+.material-icons {
+	position: absolute;
+	right: 16px;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.v-btn {
+	border: none;
+	background: transparent;
+	color: white;
+	padding: 10px 50px;
+	transition: all 200ms ease-in;
+	border: 2px solid white;
+	margin-bottom: 16px;
+	width: auto;
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.v-btn .v-icon {
+	position: absolute;
+	right: 20px;
+}
