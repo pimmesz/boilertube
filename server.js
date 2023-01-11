@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3003;
 
 app.use(express.static(__dirname + "/dist"));
 app.use(bodyParser.json());
