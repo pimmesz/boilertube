@@ -5,7 +5,7 @@ RUN apt-get install -y openssl
 
 WORKDIR /app
 
-COPY ./docker-entrypoint.sh /
+COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
 COPY package.json ./
