@@ -166,7 +166,13 @@ function getVideoInfoPerYoutubePage(pageToken = "", allowLoop = true) {
 				await saveVideosWithDetails(filteredVideosWithDetails);
 			}
 
-			console.log(nextPageToken, !!nextPageToken, allowLoop);
+			console.log(
+				nextPageToken,
+				!!nextPageToken,
+				allowLoop,
+				" - ",
+				filteredVideosWithDetails.length
+			);
 			if (nextPageToken && allowLoop) {
 				console.log("videos in database - ", await prisma.video.count());
 				getVideoInfoPerYoutubePage(nextPageToken, allowLoop);
@@ -198,5 +204,5 @@ const server = http.createServer(app);
 server.listen(port, async () => {
 	console.log(`App running on port: ${port}`);
 	// console.log(await prisma.video.count());
-	// await startBoilertube();
+	await startBoilertube();
 });
