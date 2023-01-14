@@ -9,8 +9,10 @@
 		"lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
 		"build-only": "vite build",
 		"dev": "vite",
+		"moment": "^2.29.4",
 		"preview": "vite preview",
-		"type-check": "vue-tsc --noEmit"
+		"type-check": "vue-tsc --noEmit",
+		"node-cron": "^3.0.2"
 	},
 	"dependencies": {
 		"@mdi/font": "5.9.55",

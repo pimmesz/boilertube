@@ -7,6 +7,8 @@ import cors from "cors";
 import * as dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
+import * as cron from "node-cron";
+import moment from "moment";
 
 const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
@@ -207,5 +209,8 @@ async function startBoilertube() {
 const server = http.createServer(app);
 server.listen(port, async () => {
 	console.log(`App running on port: ${port}`);
-	await startBoilertube();
+	cron.schedule("0 0 0 * * *", async () => {
+		console.log("Run loop at " + moment().format("MMMM Do YYYY, h:mm:ss a"));
+		await startBoilertube();
+	});
 });

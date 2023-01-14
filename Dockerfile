@@ -1,20 +1,24 @@
 FROM node:16-slim
 
-RUN apt-get update
-RUN apt-get install -y openssl
+# Create app directory
+WORKDIR /usr/src/app
 
-WORKDIR /app
+# Install app dependencies
+# A wildcard is used to ensure both package.json AND package-lock.json are copied
+# where available (npm@5+)
+COPY package*.json ./
+# COPY dist ./
 
-COPY package.json ./
-COPY package-lock.json ./
-COPY .env ./
-
+RUN apt-get update && apt-get install -y openssl libssl-dev
 RUN npm install
 
+# Bundle app source
 COPY . .
 
 RUN npm run build
+RUN npx prisma db push --force-reset
+# If you are building your code for production
+# RUN npm ci --only=production
 
 EXPOSE 3003
-
-CMD node server.js
+CMD [ "node", "server.js" ]
