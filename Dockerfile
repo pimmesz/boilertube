@@ -1,7 +1,7 @@
 # docker build . -t pim/node-web-app 
 # docker run -p 49160:3003 -d pim/node-web-app
 
-FROM node:16-slim
+FROM node:18-slim
 
 # Create app directory
 WORKDIR /usr/src/app
