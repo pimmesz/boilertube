@@ -6,8 +6,11 @@
 				<p class="has-margin-bottom-16">
 					Most viewed Boilerroom Youtube videos in:
 				</p>
-				<v-btn variant="outlined" @click="getVideos(1)">past month</v-btn>
-				<v-btn variant="outlined" @click="getVideos(6)">past six months</v-btn>
+				<v-btn variant="outlined" @click="getVideos(0, 1, 0)">past week</v-btn>
+				<v-btn variant="outlined" @click="getVideos(0, 0, 1)">past month</v-btn>
+				<v-btn variant="outlined" @click="getVideos(0, 0, 6)"
+					>past six months</v-btn
+				>
 			</div>
 			<v-col
 				cols="12"
@@ -51,17 +54,31 @@ export default {
 		return { boilerRoomVideos };
 	},
 	created() {
-		this.getVideos();
+		this.getVideos(0, 0, 1);
 	},
 	methods: {
 		getHumanReadableNumber(number: number) {
 			return numeral(number).format("0,0a");
 		},
-		getVideos(months = 1) {
-			console.log("start");
+		getVideos(days = 0, weeks = 0, months = 0) {
 			let fromDate = new Date();
-			fromDate.setMonth(fromDate.getMonth() - months);
-			fromDate.toISOString();
+			// Per day
+			if (days && !weeks && !months) {
+				fromDate.setDate(fromDate.getDate() - days);
+				fromDate.toISOString();
+			}
+
+			// Per week
+			if (!days && weeks && !months) {
+				fromDate.setDate(fromDate.getDate() - weeks * 7);
+				fromDate.toISOString();
+			}
+
+			// Per month
+			if (!days && !weeks && months) {
+				fromDate.setMonth(fromDate.getMonth() - months);
+				fromDate.toISOString();
+			}
 
 			axios
 				.get("http://localhost:3003/boilerroom-videos", {

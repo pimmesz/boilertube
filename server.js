@@ -94,7 +94,7 @@ async function getVideoDetails(videoId) {
 
 function getCountYoutubeVideos() {
 	return axios.get(
-		"https://youtube.googleapis.com/youtube/v3/channels?part=statistics&id=" +
+		"https://www.googleapis.com/youtube/v3/playlistItems?playlistId=" +
 			process.env.YOUTUBE_CHANNEL_ID +
 			"&key=" +
 			process.env.YOUTUBE_API_KEY
@@ -113,17 +113,21 @@ async function saveVideosWithDetails(videoDetailsArray) {
 	}
 }
 
-function getVideoInfoPerYoutubePage(pageToken = "", allowLoop = true) {
+function getVideoInfoPerYoutubePage(
+	pageToken = "",
+	allowLoop = true,
+	iteration = 0
+) {
 	// If pageToken is provided, use it to get the next page of videos
 	// Otherwise, get the first page of videos
 	const url = pageToken
-		? "https://www.googleapis.com/youtube/v3/search?pageToken=" +
+		? "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&pageToken=" +
 		  pageToken +
-		  "&part=snippet&order=date&q=site%3Ayoutube.com&channelId=" +
+		  "&playlistId=" +
 		  process.env.YOUTUBE_CHANNEL_ID +
 		  "&key=" +
 		  process.env.YOUTUBE_API_KEY
-		: "https://www.googleapis.com/youtube/v3/search?&part=snippet&order=date&q=site%3Ayoutube.com&channelId=" +
+		: "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=" +
 		  process.env.YOUTUBE_CHANNEL_ID +
 		  "&key=" +
 		  process.env.YOUTUBE_API_KEY;
@@ -131,15 +135,14 @@ function getVideoInfoPerYoutubePage(pageToken = "", allowLoop = true) {
 	axios
 		.get(url)
 		.then(async function (response) {
-			const nextPageToken = response.data.nextPageToken;
-			// const countVideos = response.data.pageInfo.totalResults;
+			const { nextPageToken, items } = response.data;
 
 			const videosWithDetails = await Promise.all(
-				response.data.items.map(async (video) => {
+				items.map(async (video) => {
 					// Check if video already exists in database
 					const videoExists = !!(await prisma.video.findFirst({
 						where: {
-							id: video.id.videoId,
+							id: video.snippet.resourceId.videoId,
 						},
 					}));
 
@@ -153,7 +156,7 @@ function getVideoInfoPerYoutubePage(pageToken = "", allowLoop = true) {
 
 					// If video doesn't exist, get video details
 					if (!videoExists) {
-						return getVideoDetails(video.id.videoId);
+						return getVideoDetails(video.snippet.resourceId.videoId);
 					}
 				})
 			);
@@ -167,15 +170,16 @@ function getVideoInfoPerYoutubePage(pageToken = "", allowLoop = true) {
 			}
 
 			console.log(
-				nextPageToken,
 				!!nextPageToken,
 				allowLoop,
-				" - ",
+				" - new videos: ",
 				filteredVideosWithDetails.length
 			);
 			if (nextPageToken && allowLoop) {
+				iteration++;
+				console.log("iteration - ", iteration);
 				console.log("videos in database - ", await prisma.video.count());
-				getVideoInfoPerYoutubePage(nextPageToken, allowLoop);
+				getVideoInfoPerYoutubePage(nextPageToken, allowLoop, iteration);
 			}
 		})
 		.catch(function (error) {
@@ -188,7 +192,7 @@ async function startBoilertube() {
 	// Get count of Boilerroom Youtube videos from their API
 	const countYoutubeVideosResponse = await getCountYoutubeVideos();
 	const countYoutubeVideos = Number(
-		countYoutubeVideosResponse?.data?.items[0]?.statistics?.videoCount
+		countYoutubeVideosResponse?.data?.pageInfo?.totalResults
 	);
 
 	// Get count of saved videos in database
@@ -203,6 +207,5 @@ async function startBoilertube() {
 const server = http.createServer(app);
 server.listen(port, async () => {
 	console.log(`App running on port: ${port}`);
-	// console.log(await prisma.video.count());
 	await startBoilertube();
 });
