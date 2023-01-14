@@ -20,6 +20,7 @@ RUN npm install @prisma/client
 COPY . .
 
 RUN npm run build
+RUN npx prisma generate
 RUN npx prisma db push --force-reset
 # If you are building your code for production
 # RUN npm ci --only=production
