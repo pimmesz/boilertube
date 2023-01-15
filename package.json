@@ -9,10 +9,8 @@
 		"lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
 		"build-only": "vite build",
 		"dev": "vite",
-		"moment": "^2.29.4",
 		"preview": "vite preview",
-		"type-check": "vue-tsc --noEmit",
-		"node-cron": "^3.0.2"
+		"type-check": "vue-tsc --noEmit"
 	},
 	"dependencies": {
 		"@mdi/font": "5.9.55",
@@ -27,7 +25,9 @@
 		"vue-resource": "^1.5.3",
 		"vue-router": "^4.1.5",
 		"vuetify": "npm:@vuetify/nightly@next",
-		"webfontloader": "^1.0.0"
+		"webfontloader": "^1.0.0",
+		"node-cron": "^3.0.2",
+		"moment": "^2.29.4"
 	},
 	"devDependencies": {
 		"@types/node": "^16.11.68",

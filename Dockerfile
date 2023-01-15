@@ -1,5 +1,5 @@
 # base image
-FROM node:lts
+FROM node:18.12.1-alpine3.16
 
 # create & set working directory
 RUN mkdir -p /usr/src
@@ -11,9 +11,11 @@ COPY . /usr/src
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN apt-get -qy update && apt-get -qy install openssl
+RUN apt-get -qy update
+RUN apk add --update --no-cache openssl1.1-compat
 
 # install dependencies
+RUN npm install -g npm@latest
 RUN npm install
 RUN npm install @prisma/client
 
