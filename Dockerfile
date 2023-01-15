@@ -11,9 +11,7 @@ COPY . /usr/src
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN apt-get -qy update
-RUN apk update \
-  && apk add openssl1.1-compat
+RUN apt-get -qy update && apt-get -qy --reinstall install openssl
 
 # install dependencies
 RUN npm install -g npm@latest
