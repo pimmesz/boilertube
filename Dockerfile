@@ -12,7 +12,8 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 RUN apt-get -qy update
-RUN apk add --update --no-cache openssl1.1-compat
+RUN apk update \
+  && apk add openssl1.1-compat
 
 # install dependencies
 RUN npm install -g npm@latest
@@ -20,6 +21,7 @@ RUN npm install
 RUN npm install @prisma/client
 
 COPY . .
+RUN npx prisma version
 RUN npx prisma generate --schema ./prisma/schema.prisma
 # start app
 RUN npm run build
