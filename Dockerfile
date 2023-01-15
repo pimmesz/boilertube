@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # docker buildx build --load -f Dockerfile --platform=linux/amd64 . -t prisma-linux-node-alpine-3.17-x64
 # docker buildx . -t pim/node-web-app --platform=linux/amd64 . 
 
