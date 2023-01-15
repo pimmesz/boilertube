@@ -1,30 +1,25 @@
-# docker build . -t pim/node-web-app 
-# docker run -p 49160:3003 -d pim/node-web-app
+# base image
+FROM node:lts
 
-FROM --platform=linux/amd64 node:lts
+# create & set working directory
+RUN mkdir -p /usr/src
+WORKDIR /usr/src
 
-# Create app directory
-WORKDIR /usr/src/app
+# copy source files
+COPY . /usr/src
 
-# Install app dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-# where available (npm@5+)
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN apt-get update 
-RUN apt-get install -y openssl libssl-dev
+RUN apt-get -qy update && apt-get -qy install openssl
 
+# install dependencies
 RUN npm install
 RUN npm install @prisma/client
 
-# Bundle app source
 COPY . .
-
+RUN npx prisma generate --schema ./prisma/schema.prisma
+# start app
 RUN npm run build
-RUN npx prisma generate
-# If you are building your code for production
-# RUN npm ci --only=production
-
 EXPOSE 3003
-CMD [ "node", "server.js" ]
+CMD npm run start
