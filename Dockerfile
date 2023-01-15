@@ -1,7 +1,7 @@
 # docker build . -t pim/node-web-app 
 # docker run -p 49160:3003 -d pim/node-web-app
 
-FROM node:lts
+FROM --platform=linux/amd64 node:lts
 
 # Create app directory
 WORKDIR /usr/src/app
