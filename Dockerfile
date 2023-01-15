@@ -12,7 +12,8 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN apt-get update && apt-get install -y openssl libssl-dev
+RUN apt-get update 
+RUN apt-get install -y openssl libssl-dev
 
 RUN npm install
 RUN npm install @prisma/client
