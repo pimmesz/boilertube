@@ -141,7 +141,7 @@ export default {
 			let fromDate = new Date(rangeDates[0].year, rangeDates[0].month, 1);
 
 			axios
-				.get("http://localhost:3003/boilerroom-videos", {
+				.get("https://boilertube.pim.gg/boilerroom-videos", {
 					params: {
 						fromdate: fromDate,
 						todate: toDate,
