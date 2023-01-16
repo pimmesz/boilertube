@@ -1,15 +1,15 @@
 #!/bin/sh
 
-# docker buildx build --load -f Dockerfile --platform=linux/amd64 . -t prisma-linux-node-alpine-3.17-x64
-# docker buildx . -t pim/node-web-app --platform=linux/amd64 . 
+# docker build . -t pim/node-web-app --no-cache
+# docker run -p 49160:3003 pim/node-web-app 
 
 # Dockerfile for running Prisma on Linux Alpine 3.17+
 
 FROM node:lts
 
 # install OpenSSL 1.1.x, needed for Linux Alpine 3.17+
-RUN apk update 
-RUN apk upgrade
+RUN apt-get update 
+RUN apt-get upgrade
 
 # create & set working directory
 RUN mkdir -p /usr/src
