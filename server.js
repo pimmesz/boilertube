@@ -52,6 +52,12 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 	}
 });
 
+app.get("/start-fill-database", async (req, res, next) => {
+	await startBoilertube();
+
+	res.send("Set Telegram webhook!!");
+});
+
 // Functions
 async function getAllVideosBetweenDates(
 	fromDate = undefined,
