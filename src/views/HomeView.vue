@@ -1,21 +1,40 @@
 <template>
 	<v-container class="fill-height flex flex--center">
 		<v-row no-gutters>
-			<div class="fixed">
+			<v-col
+				cols="8"
+				offset="2"
+				sm="4"
+				offset-sm="0"
+				md="3"
+				offset-md="0"
+				:class="{ fixed: !isMobile }"
+			>
 				<h1>BoilerTube</h1>
 				<p class="has-margin-bottom-16">
 					Most viewed Boilerroom Youtube videos in:
 				</p>
 				<!-- <v-btn variant="outlined" @click="getVideos(0, 1, 0)">past week</v-btn> -->
-				<v-btn variant="outlined" @click="getVideos(0, 0, 1)">past month</v-btn>
-				<v-btn variant="outlined" @click="getVideos(0, 0, 6)"
+				<v-btn
+					variant="outlined"
+					:disabled="activeButton === 0"
+					:block="isMobile"
+					@click="getVideos(0, 0, 1), (activeButton = 0)"
+					>past month</v-btn
+				>
+				<v-btn
+					variant="outlined"
+					:block="isMobile"
+					:disabled="activeButton === 1"
+					@click="getVideos(0, 0, 6), (activeButton = 1)"
 					>past six months</v-btn
 				>
-			</div>
+			</v-col>
 			<v-col
-				cols="12"
+				cols="8"
+				offset="2"
 				sm="6"
-				offset-sm="4"
+				offset-sm="6"
 				class="has-margin-bottom-16"
 				v-for="video in boilerRoomVideos"
 			>
@@ -43,6 +62,7 @@ import Spinner from "../components/Spinner.vue";
 import { ref } from "vue";
 import axios from "axios";
 import numeral from "numeral";
+import { useDisplay } from "vuetify";
 
 export default {
 	components: {
@@ -50,8 +70,11 @@ export default {
 	},
 	setup() {
 		const boilerRoomVideos = ref({});
+		const { width } = useDisplay();
+		const isMobile = ref(width.value < 600);
+		const activeButton = ref(0);
 
-		return { boilerRoomVideos };
+		return { boilerRoomVideos, isMobile, activeButton };
 	},
 	created() {
 		this.getVideos(0, 0, 1);
@@ -127,6 +150,7 @@ export default {
 .video-link__image {
 	transition: all 0.2s ease-in-out;
 	box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+	width: 100%;
 }
 
 .video-link__image:hover {
