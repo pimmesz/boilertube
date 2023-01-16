@@ -28,6 +28,9 @@ COPY . /usr/src
 COPY package*.json ./
 COPY prisma ./prisma/
 
+# Set env var
+RUN PRISMA_CLI_BINARY_TARGETS=linux-arm64-openssl-1.1.x
+
 # install dependencies
 RUN npm install -g npm@latest
 RUN npm install
