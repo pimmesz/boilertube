@@ -81,7 +81,7 @@ export default {
 			}
 
 			axios
-				.get("http://localhost:3003/boilerroom-videos", {
+				.get("https://boilertube.pim.gg/boilerroom-videos", {
 					params: {
 						fromdate: fromDate,
 					},
