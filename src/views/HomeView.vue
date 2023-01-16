@@ -6,7 +6,7 @@
 				<p class="has-margin-bottom-16">
 					Most viewed Boilerroom Youtube videos in:
 				</p>
-				<v-btn variant="outlined" @click="getVideos(0, 1, 0)">past week</v-btn>
+				<!-- <v-btn variant="outlined" @click="getVideos(0, 1, 0)">past week</v-btn> -->
 				<v-btn variant="outlined" @click="getVideos(0, 0, 1)">past month</v-btn>
 				<v-btn variant="outlined" @click="getVideos(0, 0, 6)"
 					>past six months</v-btn
