@@ -15,19 +15,20 @@
 	"dependencies": {
 		"@mdi/font": "5.9.55",
 		"@prisma/client": "^4.8.1",
+		"@vuepic/vue-datepicker": "^3.6.5",
 		"axios": "^1.2.2",
 		"cors": "^2.8.5",
 		"dotenv": "^16.0.3",
 		"express": "^4.17.3",
+		"moment": "^2.29.4",
+		"node-cron": "^3.0.2",
 		"numeral": "^2.0.6",
 		"vue": "^3.2.41",
 		"vue-axios": "^3.5.2",
 		"vue-resource": "^1.5.3",
 		"vue-router": "^4.1.5",
 		"vuetify": "npm:@vuetify/nightly@next",
-		"webfontloader": "^1.0.0",
-		"node-cron": "^3.0.2",
-		"moment": "^2.29.4"
+		"webfontloader": "^1.0.0"
 	},
 	"devDependencies": {
 		"@types/node": "^16.11.68",

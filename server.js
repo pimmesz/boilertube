@@ -32,6 +32,9 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 	if (fromDate && toDate) {
 		const betweenDateVideos = await getAllVideosBetweenDates(fromDate, toDate);
 
+		console.log("fromDate", fromDate);
+		console.log("toDate", toDate);
+
 		res.send(
 			JSON.stringify({
 				betweenDateVideos,
@@ -93,6 +96,7 @@ async function getVideoDetails(videoId) {
 			publishedAt: videoDetails.snippet.publishedAt,
 			title: videoDetails.snippet.title,
 			thumbnails: JSON.stringify(videoDetails.snippet.thumbnails),
+			tags: `${videoDetails.snippet.tags}`,
 			viewCount: videoDetails.statistics.viewCount,
 		};
 	} catch (error) {
