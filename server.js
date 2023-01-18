@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
 import * as cron from "node-cron";
 import moment from "moment";
+import puppeteer, { ConsoleMessage } from "puppeteer";
 
 const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
@@ -32,12 +33,9 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 	if (fromDate && toDate) {
 		const betweenDateVideos = await getAllVideosBetweenDates(fromDate, toDate);
 
-		console.log("fromDate", fromDate);
-		console.log("toDate", toDate);
-
 		res.send(
 			JSON.stringify({
-				betweenDateVideos,
+				betweenDateVideos: betweenDateVideos.slice(0, 20),
 			})
 		);
 		return;
@@ -48,7 +46,7 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 
 		res.send(
 			JSON.stringify({
-				fromDateVideos,
+				fromDateVideos: fromDateVideos.slice(0, 20),
 			})
 		);
 		return;
@@ -96,7 +94,7 @@ async function getVideoDetails(videoId) {
 			publishedAt: videoDetails.snippet.publishedAt,
 			title: videoDetails.snippet.title,
 			thumbnails: JSON.stringify(videoDetails.snippet.thumbnails),
-			tags: `${videoDetails.snippet.tags}`,
+			genres: "",
 			viewCount: videoDetails.statistics.viewCount,
 		};
 	} catch (error) {
@@ -113,15 +111,37 @@ function getCountYoutubeVideos() {
 	);
 }
 
-async function saveVideosWithDetails(videoDetailsArray) {
+async function updateVideosWithGenres(video) {
 	try {
-		videoDetailsArray.forEach(async (videoDetails) => {
-			await prisma.video.create({
-				data: videoDetails,
-			});
+		await prisma.video.update({
+			where: {
+				id: video.id,
+			},
+			data: {
+				genres: JSON.stringify(video.genres),
+			},
 		});
 	} catch (error) {
-		console.log(error);
+		console.log("updateVideosWithGenres failed");
+	}
+}
+
+async function saveOrUpdateVideosWithDetails(video) {
+	try {
+		await prisma.video.upsert({
+			where: {
+				id: video.id,
+			},
+			update: {
+				viewCount: video.viewCount,
+				genres: video.genres,
+			},
+			create: {
+				...video,
+			},
+		});
+	} catch (error) {
+		console.log("saveOrUpdateVideosWithDetails failed");
 	}
 }
 
@@ -149,44 +169,20 @@ function getVideoInfoPerYoutubePage(
 		.then(async function (response) {
 			const { nextPageToken, items } = response.data;
 
-			const videosWithDetails = await Promise.all(
-				items.map(async (video) => {
-					// Check if video already exists in database
-					const videoExists = !!(await prisma.video.findFirst({
-						where: {
-							id: video.snippet.resourceId.videoId,
-						},
-					}));
+			await scrapeGenres(items);
 
-					// If video exists, set allowLoop to false
-					// to stop the loop. This indicates that the current page
-					// has entirely or partially been saved to the database.
-					// if (videoExists) {
-					// 	allowLoop = false;
-					// 	return;
-					// }
+			items.forEach(async (video) => {
+				const videoDetails = await getVideoDetails(
+					video.snippet.resourceId.videoId
+				);
 
-					// If video doesn't exist, get video details
-					if (!videoExists) {
-						return getVideoDetails(video.snippet.resourceId.videoId);
-					}
-				})
-			);
+				try {
+					await saveOrUpdateVideosWithDetails(videoDetails);
+				} catch (error) {
+					console.log(error);
+				}
+			});
 
-			const filteredVideosWithDetails = videosWithDetails.filter(
-				(video) => video !== undefined
-			);
-
-			if (filteredVideosWithDetails.length > 0) {
-				await saveVideosWithDetails(filteredVideosWithDetails);
-			}
-
-			console.log(
-				!!nextPageToken,
-				allowLoop,
-				" - new videos: ",
-				filteredVideosWithDetails.length
-			);
 			if (nextPageToken && allowLoop) {
 				iteration++;
 				console.log("iteration - ", iteration);
@@ -213,6 +209,55 @@ async function startBoilertube() {
 	// If there are more videos on Youtube than in database, get new videos
 	if (countSavedVideos < countYoutubeVideos) {
 		getVideoInfoPerYoutubePage();
+	}
+}
+
+// Start the app
+async function scrapeGenres(videos) {
+	try {
+		const puppeteerOptions =
+			process.env.ENVIRONMENT === "production"
+				? {
+						executablePath: "chromium-browser",
+				  }
+				: {};
+
+		const browser = await puppeteer.launch(puppeteerOptions);
+		const page = await browser.newPage();
+
+		for (let i = 0; i < videos.length; i++) {
+			try {
+				await page.goto(`https://boilerroom.tv/?s=${videos[i].snippet.title}`);
+				await page.waitForSelector("#app");
+
+				const genres = await page.evaluate(() => {
+					const elements = Array.from(
+						document
+							?.querySelector("[class*='BroadcastGenres-BroadcastGenres']")
+							?.querySelectorAll("span")
+					);
+					if (elements && elements.length <= 0) return;
+					return elements.map((genreSpan) => genreSpan.innerText);
+				});
+
+				if (genres && genres?.length > 0) {
+					console.log(genres);
+					const video = Object.assign(
+						{ id: videos[i].snippet.resourceId.videoId },
+						{
+							genres: JSON.stringify(genres),
+						}
+					);
+					await updateVideosWithGenres(video);
+				}
+			} catch (error) {
+				console.log("Could't find - ", videos[i].snippet.title);
+			}
+		}
+
+		await browser.close();
+	} catch (e) {
+		console.log("scrapeGenres", e);
 	}
 }
 

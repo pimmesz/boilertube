@@ -7,7 +7,9 @@
 				sm="4"
 				offset-sm="0"
 				md="3"
-				offset-md="0"
+				offset-md="1"
+				lg="2"
+				offset-lg="1"
 				:class="{ fixed: !isMobile }"
 			>
 				<h1>BoilerTube</h1>
@@ -18,27 +20,60 @@
 					variant="outlined"
 					:disabled="activeButton === 0"
 					:block="isMobile"
-					@click="getVideosFromDate(0, 0, 1), (activeButton = 0)"
+					@click="getVideos(0, 0, 1), (activeButton = 0)"
 					>past month</v-btn
 				>
 				<v-btn
 					variant="outlined"
 					:block="isMobile"
-					:disabled="activeButton === 1"
-					@click="getVideosFromDate(0, 0, 6), (activeButton = 1)"
+					:disabled="activeButton === 2"
+					@click="getVideos(0, 0, 999), (activeButton = 2)"
 					>past six months</v-btn
 				>
+				<v-btn
+					variant="outlined"
+					:block="isMobile"
+					:disabled="activeButton === 1"
+					@click="getVideos(0, 0, 6), (activeButton = 1)"
+					>ever
+				</v-btn>
 				<Datepicker
 					class="has-margin-bottom-16"
 					v-model="rangeDate"
+					placeholder="Select a Date Range"
 					month-picker
 					range
 				></Datepicker>
+				<div>
+					<v-combobox
+						v-model="chips"
+						:items="items"
+						chips
+						clearable
+						label="Filter genres"
+						multiple
+						variant="solo"
+					>
+						<template v-slot:selection="{ attrs, item, select, selected }">
+							<v-chip
+								v-bind="attrs"
+								:model-value="selected"
+								closable
+								@click="select"
+								@click:close="remove(item)"
+							>
+								<strong>{{ item }}</strong
+								>&nbsp;
+								<span>(interest)</span>
+							</v-chip>
+						</template>
+					</v-combobox>
+				</div>
 			</v-col>
 			<v-col
 				cols="8"
 				offset="2"
-				sm="6"
+				sm="4"
 				offset-sm="6"
 				class="has-margin-bottom-16"
 				v-for="video in boilerRoomVideos"
@@ -82,11 +117,27 @@ export default {
 		const isMobile = ref(width.value < 600);
 		const activeButton = ref(0);
 		const rangeDate = ref();
+		const chips = ref([]);
+		const items = ref([
+			"Programming",
+			"Playing video games",
+			"Watching movies",
+			"Sleeping",
+			"Streaming",
+			"Eating",
+		]);
 
-		return { boilerRoomVideos, isMobile, activeButton, rangeDate };
+		return {
+			boilerRoomVideos,
+			isMobile,
+			activeButton,
+			rangeDate,
+			chips,
+			items,
+		};
 	},
 	created() {
-		this.getVideosFromDate(0, 0, 1);
+		this.getVideos(0, 0, 1);
 	},
 	watch: {
 		// whenever question changes, this function will run
@@ -94,12 +145,16 @@ export default {
 			this.activeButton = -1;
 			this.getVideosBetweenDates(newRangeDate);
 		},
+		// whenever question changes, this function will run
+		chips(newChips, oldChips) {
+			console.log(newChips[0]);
+		},
 	},
 	methods: {
 		getHumanReadableNumber(number: number) {
 			return numeral(number).format("0,0a");
 		},
-		getVideosFromDate(days = 0, weeks = 0, months = 0) {
+		getVideos(days = 0, weeks = 0, months = 0, genre = '') {
 			let fromDate = new Date();
 			// Per day
 			if (days && !weeks && !months) {
@@ -119,8 +174,9 @@ export default {
 				fromDate.toISOString();
 			}
 
+			// https://boilertube.pim.gg
 			axios
-				.get("https://boilertube.pim.gg/boilerroom-videos", {
+				.get("http://localhost:3003/boilerroom-videos", {
 					params: {
 						fromdate: fromDate,
 					},

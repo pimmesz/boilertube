@@ -12,5 +12,6 @@ model Video {
   publishedAt    String
   title          String
   thumbnails     String
+  genres         String
   viewCount      String
 }
