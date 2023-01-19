@@ -164,7 +164,7 @@ export default {
 		},
 		fetchGenres() {
 			axios
-				.get("http://localhost:3003/get-genres")
+				.get("https://boilertube.pim.gg/get-genres")
 				.then((response) => {
 					const genres = response.data.genres;
 					this.items = genres;
@@ -199,7 +199,7 @@ export default {
 
 			// https://boilertube.pim.gg
 			axios
-				.get("http://localhost:3003/boilerroom-videos", {
+				.get("https://boilertube.pim.gg/boilerroom-videos", {
 					params: {
 						fromdate: fromDate,
 					},
