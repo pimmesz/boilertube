@@ -35,7 +35,7 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 
 		res.send(
 			JSON.stringify({
-				betweenDateVideos: betweenDateVideos.slice(0, 20),
+				betweenDateVideos: betweenDateVideos,
 			})
 		);
 		return;
@@ -46,7 +46,7 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 
 		res.send(
 			JSON.stringify({
-				fromDateVideos: fromDateVideos.slice(0, 20),
+				fromDateVideos: fromDateVideos,
 			})
 		);
 		return;
@@ -78,7 +78,7 @@ app.get("/get-genres", async (req, res, next) => {
 app.get("/start-fill-database", async (req, res, next) => {
 	await startBoilertube();
 
-	res.send("Set Telegram webhook!!");
+	res.send("Fill this database to the brim!!");
 });
 
 // Functions
