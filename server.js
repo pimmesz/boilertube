@@ -200,7 +200,7 @@ function getVideoInfoPerYoutubePage(
 				})
 			);
 
-			// await scrapeGenres(items);
+			await scrapeGenres(items);
 
 			if (nextPageToken && allowLoop) {
 				iteration++;
