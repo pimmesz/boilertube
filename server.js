@@ -190,7 +190,7 @@ function getVideoInfoPerYoutubePage(
 		.then(async function (response) {
 			const { nextPageToken, items } = response.data;
 
-			Promise.all(
+			await Promise.all(
 				items.map(async (video) => {
 					const videoDetails = await getVideoDetails(
 						video.snippet.resourceId.videoId
