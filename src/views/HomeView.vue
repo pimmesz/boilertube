@@ -1,5 +1,5 @@
 <template>
-	<v-container class="fill-height flex flex--center">
+	<v-container class="fill-height">
 		<v-row no-gutters>
 			<v-col
 				cols="8"
@@ -20,21 +20,30 @@
 					variant="outlined"
 					:disabled="activeButton === 0"
 					:block="isMobile"
-					@click="getVideos(0, 0, 1), (activeButton = 0)"
+					@click="
+						(videoFilterDate = { days: 0, weeks: 0, months: 1 }),
+							(activeButton = 0)
+					"
 					>past month</v-btn
 				>
 				<v-btn
 					variant="outlined"
 					:block="isMobile"
-					:disabled="activeButton === 2"
-					@click="getVideos(0, 0, 999), (activeButton = 2)"
+					:disabled="activeButton === 1"
+					@click="
+						(videoFilterDate = { days: 0, weeks: 0, months: 6 }),
+							(activeButton = 1)
+					"
 					>past six months</v-btn
 				>
 				<v-btn
 					variant="outlined"
 					:block="isMobile"
-					:disabled="activeButton === 1"
-					@click="getVideos(0, 0, 6), (activeButton = 1)"
+					:disabled="activeButton === 2"
+					@click="
+						(videoFilterDate = { days: 0, weeks: 0, months: 999 }),
+							(activeButton = 2)
+					"
 					>ever
 				</v-btn>
 				<Datepicker
@@ -116,46 +125,60 @@ export default {
 		const { width } = useDisplay();
 		const isMobile = ref(width.value < 600);
 		const activeButton = ref(0);
+		const videoFilterDate = ref({ days: 0, weeks: 0, months: 1 });
 		const rangeDate = ref();
 		const chips = ref([]);
-		const items = ref([
-			"Programming",
-			"Playing video games",
-			"Watching movies",
-			"Sleeping",
-			"Streaming",
-			"Eating",
-		]);
+		const items = ref([]);
 
 		return {
 			boilerRoomVideos,
 			isMobile,
 			activeButton,
+			videoFilterDate,
 			rangeDate,
 			chips,
 			items,
 		};
 	},
 	created() {
-		this.getVideos(0, 0, 1);
+		this.fetchVideos({ days: 0, weeks: 0, months: 1 });
+		this.fetchGenres();
 	},
 	watch: {
 		// whenever question changes, this function will run
-		rangeDate(newRangeDate, oldRangeDate) {
+		rangeDate(newRangeDate) {
 			this.activeButton = -1;
-			this.getVideosBetweenDates(newRangeDate);
+			this.fetchVideosBetweenDates(newRangeDate);
 		},
 		// whenever question changes, this function will run
-		chips(newChips, oldChips) {
-			console.log(newChips[0]);
+		chips(newChips) {
+			this.fetchVideos(this.videoFilterDate, newChips);
+		},
+		videoFilterDate(newVideoFilterDate) {
+			this.fetchVideos(newVideoFilterDate, this.chips);
 		},
 	},
 	methods: {
 		getHumanReadableNumber(number: number) {
 			return numeral(number).format("0,0a");
 		},
-		getVideos(days = 0, weeks = 0, months = 0, genre = '') {
+		fetchGenres() {
+			axios
+				.get("http://localhost:3003/get-genres")
+				.then((response) => {
+					const genres = response.data.genres;
+					this.items = genres;
+				})
+				.catch((error) => {
+					console.log(error);
+				});
+		},
+		fetchVideos(
+			dateObject = { days: 0, weeks: 0, months: 0 },
+			selectedGenres = []
+		) {
 			let fromDate = new Date();
+			const { days, weeks, months } = dateObject;
 			// Per day
 			if (days && !weeks && !months) {
 				fromDate.setDate(fromDate.getDate() - days);
@@ -182,7 +205,25 @@ export default {
 					},
 				})
 				.then((response) => {
-					const data = response.data.fromDateVideos;
+					let data = response.data.fromDateVideos;
+
+					if (selectedGenres.length > 0) {
+						data = data
+							.map((video) => {
+								if (!video.genres) return;
+								const videoGenres = JSON.parse(video.genres).split(",");
+								if (
+									!video.genres ||
+									videoGenres.some((genre: string) =>
+										selectedGenres.includes(genre)
+									)
+								) {
+									return video;
+								}
+							})
+							.filter((video) => video);
+					}
+
 					data.forEach(
 						(video: any) => (video.thumbnails = JSON.parse(video.thumbnails))
 					);
@@ -192,7 +233,7 @@ export default {
 					console.log(error);
 				});
 		},
-		getVideosBetweenDates(rangeDates) {
+		fetchVideosBetweenDates(rangeDates: any) {
 			let toDate = new Date(rangeDates[1].year, rangeDates[1].month, 1);
 			let fromDate = new Date(rangeDates[0].year, rangeDates[0].month, 1);
 

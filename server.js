@@ -53,6 +53,28 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 	}
 });
 
+app.get("/get-genres", async (req, res, next) => {
+	const videos = await prisma.video.findMany();
+	const genres = videos.reduce((previousValues, currentValue) => {
+		if (currentValue.genres) {
+			const genres = JSON.parse(currentValue.genres).split(",");
+			if (
+				genres.length >= 1 &&
+				!previousValues.some((genre) => genres.includes(genre))
+			) {
+				previousValues.push(...genres);
+			}
+		}
+		return previousValues;
+	}, []);
+
+	res.send(
+		JSON.stringify({
+			genres,
+		})
+	);
+});
+
 app.get("/start-fill-database", async (req, res, next) => {
 	await startBoilertube();
 
@@ -134,7 +156,6 @@ async function saveOrUpdateVideosWithDetails(video) {
 			},
 			update: {
 				viewCount: video.viewCount,
-				genres: video.genres,
 			},
 			create: {
 				...video,
@@ -169,19 +190,17 @@ function getVideoInfoPerYoutubePage(
 		.then(async function (response) {
 			const { nextPageToken, items } = response.data;
 
+			Promise.all(
+				items.map(async (video) => {
+					const videoDetails = await getVideoDetails(
+						video.snippet.resourceId.videoId
+					);
+
+					return await saveOrUpdateVideosWithDetails(videoDetails);
+				})
+			);
+
 			await scrapeGenres(items);
-
-			items.forEach(async (video) => {
-				const videoDetails = await getVideoDetails(
-					video.snippet.resourceId.videoId
-				);
-
-				try {
-					await saveOrUpdateVideosWithDetails(videoDetails);
-				} catch (error) {
-					console.log(error);
-				}
-			});
 
 			if (nextPageToken && allowLoop) {
 				iteration++;
@@ -241,17 +260,17 @@ async function scrapeGenres(videos) {
 				});
 
 				if (genres && genres?.length > 0) {
-					console.log(genres);
+					console.log("Found genres", genres, "for", videos[i].snippet.title);
 					const video = Object.assign(
 						{ id: videos[i].snippet.resourceId.videoId },
 						{
-							genres: JSON.stringify(genres),
+							genres: `${genres}`,
 						}
 					);
 					await updateVideosWithGenres(video);
 				}
 			} catch (error) {
-				console.log("Could't find - ", videos[i].snippet.title);
+				console.log("Could't find genre for - ", videos[i].snippet.title);
 			}
 		}
 
