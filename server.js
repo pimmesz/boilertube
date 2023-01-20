@@ -163,7 +163,7 @@ async function saveOrUpdateVideosWithDetails(video) {
 			},
 		});
 	} catch (error) {
-		console.log("saveOrUpdateVideosWithDetails failed", error);
+		console.log("saveOrUpdateVideosWithDetails failed", video, error);
 	}
 }
 
@@ -193,7 +193,11 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 						video.snippet.resourceId.videoId
 					);
 
-					return await saveOrUpdateVideosWithDetails(videoDetails);
+					if (videoDetails) {
+						await saveOrUpdateVideosWithDetails(videoDetails);
+					}
+
+					return;
 				})
 			);
 
