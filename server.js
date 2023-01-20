@@ -247,7 +247,7 @@ async function scrapeGenres(videos) {
 
 		for (let i = 0; i < videos.length; i++) {
 			try {
-				const existingVideo = await prisma.video.findMany({
+				const existingVideo = await prisma.video.findUnique({
 					where: {
 						id: videos[i].snippet.resourceId.videoId,
 					},
