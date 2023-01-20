@@ -252,6 +252,11 @@ async function scrapeGenres(videos) {
 					},
 				});
 
+				console.log(
+					"Found video genres",
+					existingVideo?.genres,
+					existingVideo?.genres?.length
+				);
 				if (existingVideo && existingVideo?.genres?.length > 0) {
 					console.log("Video already has genres - ", existingVideo.genres);
 				}
