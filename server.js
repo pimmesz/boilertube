@@ -193,7 +193,7 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 						video.snippet.resourceId.videoId
 					);
 
-					if (videoDetails) {
+					if (videoDetails && videoDetails.viewCount) {
 						await saveOrUpdateVideosWithDetails(videoDetails);
 					}
 
@@ -239,6 +239,8 @@ async function scrapeGenres(videos) {
 			process.env.ENVIRONMENT === "production"
 				? {
 						executablePath: "chromium-browser",
+						dumpio: true,
+						headless: false,
 				  }
 				: {};
 
@@ -258,8 +260,10 @@ async function scrapeGenres(videos) {
 					return;
 				}
 
-				await page.goto(`https://boilerroom.tv/?s=${videos[i].snippet.title}`);
-				await page.waitForSelector("#app");
+				await page.goto(`https://boilerroom.tv/?s=${videos[i].snippet.title}`, {
+					waitUntil: "networkidle2",
+				});
+				await page.waitFor(3000);
 
 				const genres = await page.evaluate(() => {
 					const elements = Array.from(
