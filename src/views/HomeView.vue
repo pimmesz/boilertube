@@ -206,6 +206,7 @@ export default {
 				})
 				.then((response) => {
 					let data = response.data.fromDateVideos;
+					console.log(response.data.fromDateVideos);
 
 					if (selectedGenres.length > 0) {
 						data = data

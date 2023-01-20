@@ -246,6 +246,13 @@ async function scrapeGenres(videos) {
 
 		for (let i = 0; i < videos.length; i++) {
 			try {
+				const existingVideo = await prisma.video.findMany({
+					where: {
+						id: videos[i].snippet.resourceId.videoId,
+					},
+				});
+
+				if (!existingVideo || existingVideo.length < 1) continue;
 				await page.goto(`https://boilerroom.tv/?s=${videos[i].snippet.title}`);
 				await page.waitForSelector("#app");
 
