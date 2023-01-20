@@ -163,15 +163,11 @@ async function saveOrUpdateVideosWithDetails(video) {
 			},
 		});
 	} catch (error) {
-		console.log("saveOrUpdateVideosWithDetails failed");
+		console.log("saveOrUpdateVideosWithDetails failed", error);
 	}
 }
 
-function getVideoInfoPerYoutubePage(
-	pageToken = "",
-	allowLoop = true,
-	iteration = 0
-) {
+function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 	// If pageToken is provided, use it to get the next page of videos
 	// Otherwise, get the first page of videos
 	const url = pageToken
@@ -203,11 +199,11 @@ function getVideoInfoPerYoutubePage(
 
 			await scrapeGenres(items);
 
-			if (nextPageToken && allowLoop) {
+			if (nextPageToken) {
 				iteration++;
 				console.log("iteration - ", iteration);
 				console.log("videos in database - ", await prisma.video.count());
-				getVideoInfoPerYoutubePage(nextPageToken, allowLoop, iteration);
+				getVideoInfoPerYoutubePage(nextPageToken, iteration);
 			}
 		})
 		.catch(function (error) {
@@ -289,6 +285,7 @@ async function scrapeGenres(videos) {
 		await browser.close();
 	} catch (e) {
 		console.log("scrapeGenres", e);
+		await browser.close();
 	}
 }
 
