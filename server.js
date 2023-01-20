@@ -252,7 +252,10 @@ async function scrapeGenres(videos) {
 					},
 				});
 
-				console.log("Video already has genres - ", existingVideo.genres);
+				if (existingVideo && existingVideo.length > 0) {
+					console.log("Video already has genres - ", existingVideo.genres);
+				}
+
 				if (!existingVideo || existingVideo.length < 1) continue;
 				await page.goto(`https://boilerroom.tv/?s=${videos[i].snippet.title}`);
 				await page.waitForSelector("#app");
