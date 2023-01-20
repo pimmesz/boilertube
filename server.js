@@ -295,13 +295,6 @@ async function scrapeGenres(videos) {
 const server = http.createServer(app);
 server.listen(port, async () => {
 	console.log(`App running on port: ${port}`);
-	const videos = await prisma.video.findMany();
-	videos.forEach((video) => {
-		if (video.genres.length < 1) return;
-		console.log("video", JSON.parse(video.genres).length);
-	});
-	return;
-
 	cron.schedule("0 0 0 * * *", async () => {
 		console.log("Run loop at " + moment().format("MMMM Do YYYY, h:mm:ss a"));
 		await startBoilertube();
