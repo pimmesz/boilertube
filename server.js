@@ -141,7 +141,6 @@ function getCountYoutubeVideos() {
 }
 
 async function updateVideosWithGenres(video) {
-	console.log(video);
 	try {
 		await prisma.video.update({
 			where: {
@@ -269,30 +268,35 @@ async function scrapeGenres(videos) {
 				await page.goto(`https://boilerroom.tv/?s=${videos[i].title}`, {
 					waitUntil: "networkidle2",
 				});
-				await page.waitFor(3000);
 
-				const genres = await page.evaluate(() => {
-					const elements = Array.from(
-						document
-							?.querySelector("[class*='BroadcastGenres-BroadcastGenres']")
-							?.querySelectorAll("span")
-					);
-					if (elements && elements.length <= 0) return;
-					return elements.map((genreSpan) => genreSpan.innerText);
+				const div = await page.$(`[class*='BroadcastGenres-BroadcastGenres']`);
+
+				if (!div) continue;
+
+				const spans = await div.$$("span");
+
+				if (!spans || spans.length < 1) continue;
+
+				const innerTextNodes = await Promise.all(
+					spans.map(async (span) => {
+						return span.getProperty("innerText");
+					})
+				);
+
+				const genres = await Promise.all(
+					innerTextNodes.map(async (innerTextNode) => {
+						return innerTextNode.jsonValue();
+					})
+				);
+
+				const video = Object.assign(videos[i], {
+					genres: `${genres}`,
 				});
 
-				if (genres && genres?.length > 0) {
-					console.log("Found genres", genres, "for", videos[i].title);
-					const video = Object.assign(
-						{ id: videos[i].id },
-						{
-							genres: `${genres}`,
-						}
-					);
-					await updateVideosWithGenres(video);
-				}
+				console.log("Found genres", genres, "for", videos[i].title);
+				await updateVideosWithGenres(video);
 			} catch (error) {
-				console.log("Could't find genre for - ", videos[i].title);
+				console.log("Could't find genre for - ", videos[i].title, error);
 			}
 		}
 
