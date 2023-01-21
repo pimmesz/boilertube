@@ -81,6 +81,13 @@ app.get("/start-fill-database", async (req, res, next) => {
 	res.send("Fill this database to the brim!!");
 });
 
+app.get("/start-scrape-genres", async (req, res, next) => {
+	const videos = await prisma.video.findMany();
+	await scrapeGenres(videos);
+
+	res.send("Find genres!!");
+});
+
 // Functions
 async function getAllVideosBetweenDates(
 	fromDate = undefined,
@@ -299,12 +306,16 @@ const server = http.createServer(app);
 server.listen(port, async () => {
 	console.log(`App running on port: ${port}`);
 	cron.schedule("0 0 0 * * *", async () => {
-		console.log("Run startBoilertube at " + moment().format("MMMM Do YYYY, h:mm:ss a"));
+		console.log(
+			"Run startBoilertube at " + moment().format("MMMM Do YYYY, h:mm:ss a")
+		);
 		await startBoilertube();
 	});
 
 	cron.schedule("0 0 3 * * *", async () => {
-		console.log("Run scrapeGenres at " + moment().format("MMMM Do YYYY, h:mm:ss a"));
+		console.log(
+			"Run scrapeGenres at " + moment().format("MMMM Do YYYY, h:mm:ss a")
+		);
 		const videos = await prisma.video.findMany();
 		await scrapeGenres(videos);
 	});
