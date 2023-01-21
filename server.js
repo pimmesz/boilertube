@@ -256,7 +256,7 @@ async function scrapeGenres(videos) {
 			try {
 				const existingVideo = await prisma.video.findUnique({
 					where: {
-						id: videos[i].snippet.resourceId.videoId,
+						id: videos[i].id,
 					},
 				});
 
@@ -265,7 +265,7 @@ async function scrapeGenres(videos) {
 					return;
 				}
 
-				await page.goto(`https://boilerroom.tv/?s=${videos[i].snippet.title}`, {
+				await page.goto(`https://boilerroom.tv/?s=${videos[i].title}`, {
 					waitUntil: "networkidle2",
 				});
 				await page.waitFor(3000);
@@ -281,9 +281,9 @@ async function scrapeGenres(videos) {
 				});
 
 				if (genres && genres?.length > 0) {
-					console.log("Found genres", genres, "for", videos[i].snippet.title);
+					console.log("Found genres", genres, "for", videos[i].title);
 					const video = Object.assign(
-						{ id: videos[i].snippet.resourceId.videoId },
+						{ id: videos[i].id },
 						{
 							genres: `${genres}`,
 						}
@@ -291,7 +291,7 @@ async function scrapeGenres(videos) {
 					await updateVideosWithGenres(video);
 				}
 			} catch (error) {
-				console.log("Could't find genre for - ", videos[i].snippet.title);
+				console.log("Could't find genre for - ", videos[i].title);
 			}
 		}
 
