@@ -252,6 +252,7 @@ async function scrapeGenres(videos) {
 		const browser = await puppeteer.launch(puppeteerOptions);
 		const page = await browser.newPage();
 
+		console.log("Start scraping genres for videos - ", videos.length);
 		for (let i = 0; i < videos.length; i++) {
 			try {
 				const existingVideo = await prisma.video.findUnique({
@@ -262,7 +263,7 @@ async function scrapeGenres(videos) {
 
 				if (existingVideo && existingVideo?.genres?.length > 0) {
 					console.log("Video already has genres - ", existingVideo.genres);
-					return;
+					continue;
 				}
 
 				await page.goto(`https://boilerroom.tv/?s=${videos[i].title}`, {
