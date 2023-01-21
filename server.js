@@ -201,8 +201,6 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 				})
 			);
 
-			await scrapeGenres(items);
-
 			if (nextPageToken) {
 				iteration++;
 				console.log("iteration - ", iteration);
@@ -301,7 +299,13 @@ const server = http.createServer(app);
 server.listen(port, async () => {
 	console.log(`App running on port: ${port}`);
 	cron.schedule("0 0 0 * * *", async () => {
-		console.log("Run loop at " + moment().format("MMMM Do YYYY, h:mm:ss a"));
+		console.log("Run startBoilertube at " + moment().format("MMMM Do YYYY, h:mm:ss a"));
 		await startBoilertube();
+	});
+
+	cron.schedule("0 0 3 * * *", async () => {
+		console.log("Run scrapeGenres at " + moment().format("MMMM Do YYYY, h:mm:ss a"));
+		const videos = await prisma.video.findMany();
+		await scrapeGenres(videos);
 	});
 });
