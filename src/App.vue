@@ -1,4 +1,5 @@
 <template>
+  <Analytics/>
   <v-app>
     <v-main>
       <RouterView />
@@ -8,6 +9,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import { Analytics } from "@vercel/analytics/react"
 
 export default defineComponent({
   name: "App",

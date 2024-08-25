@@ -50,34 +50,10 @@
 					class="has-margin-bottom-16"
 					v-model="rangeDate"
 					placeholder="Select a Date Range"
+					:max-date="new Date()"
 					month-picker
 					range
 				></Datepicker>
-				<div>
-					<v-combobox
-						v-model="chips"
-						:items="items"
-						chips
-						clearable
-						label="Filter genres"
-						multiple
-						variant="solo"
-					>
-						<template v-slot:selection="{ attrs, item, select, selected }">
-							<v-chip
-								v-bind="attrs"
-								:model-value="selected"
-								closable
-								@click="select"
-								@click:close="remove(item)"
-							>
-								<strong>{{ item }}</strong
-								>&nbsp;
-								<span>(interest)</span>
-							</v-chip>
-						</template>
-					</v-combobox>
-				</div>
 			</v-col>
 			<v-col
 				cols="8"
@@ -127,7 +103,6 @@ export default {
 		const activeButton = ref(0);
 		const videoFilterDate = ref({ days: 0, weeks: 0, months: 1 });
 		const rangeDate = ref();
-		const chips = ref([]);
 		const items = ref([]);
 
 		return {
@@ -136,13 +111,11 @@ export default {
 			activeButton,
 			videoFilterDate,
 			rangeDate,
-			chips,
 			items,
 		};
 	},
 	created() {
 		this.fetchVideos({ days: 0, weeks: 0, months: 1 });
-		this.fetchGenres();
 	},
 	watch: {
 		// whenever question changes, this function will run
@@ -151,31 +124,16 @@ export default {
 			this.fetchVideosBetweenDates(newRangeDate);
 		},
 		// whenever question changes, this function will run
-		chips(newChips) {
-			this.fetchVideos(this.videoFilterDate, newChips);
-		},
 		videoFilterDate(newVideoFilterDate) {
-			this.fetchVideos(newVideoFilterDate, this.chips);
+			this.fetchVideos(newVideoFilterDate);
 		},
 	},
 	methods: {
 		getHumanReadableNumber(number: number) {
 			return numeral(number).format("0,0a");
 		},
-		fetchGenres() {
-			axios
-				.get("https://boilertube.pim.gg/get-genres")
-				.then((response) => {
-					const genres = response.data.genres;
-					this.items = genres;
-				})
-				.catch((error) => {
-					console.log(error);
-				});
-		},
 		fetchVideos(
-			dateObject = { days: 0, weeks: 0, months: 0 },
-			selectedGenres = []
+			dateObject = { days: 0, weeks: 0, months: 0 }
 		) {
 			let fromDate = new Date();
 			const { days, weeks, months } = dateObject;
@@ -205,26 +163,7 @@ export default {
 					},
 				})
 				.then((response) => {
-					let data = response.data.fromDateVideos;
-					console.log(response.data.fromDateVideos);
-
-					if (selectedGenres.length > 0) {
-						data = data
-							.map((video) => {
-								if (!video.genres) return;
-								const videoGenres = JSON.parse(video.genres).split(",");
-								if (
-									!video.genres ||
-									videoGenres.some((genre: string) =>
-										selectedGenres.includes(genre)
-									)
-								) {
-									return video;
-								}
-							})
-							.filter((video) => video);
-					}
-
+					const data = response.data.fromDateVideos;
 					data.forEach(
 						(video: any) => (video.thumbnails = JSON.parse(video.thumbnails))
 					);
@@ -301,5 +240,12 @@ export default {
 	position: absolute;
 	top: 0;
 	left: 10px;
+}
+
+.dp__overlay_cell_disabled {
+	color: gray;
+}
+.dp__overlay_cell_disabled:hover {
+	color: gray;
 }
 </style>

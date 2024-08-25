@@ -9,7 +9,6 @@ import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
 import * as cron from "node-cron";
 import moment from "moment";
-import puppeteer, { ConsoleMessage } from "puppeteer";
 
 const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
@@ -53,39 +52,10 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 	}
 });
 
-app.get("/get-genres", async (req, res, next) => {
-	const videos = await prisma.video.findMany();
-	const genres = videos.reduce((previousValues, currentValue) => {
-		if (currentValue.genres) {
-			const genres = JSON.parse(currentValue.genres).split(",");
-			if (
-				genres.length >= 1 &&
-				!previousValues.some((genre) => genres.includes(genre))
-			) {
-				previousValues.push(...genres);
-			}
-		}
-		return previousValues;
-	}, []);
-
-	res.send(
-		JSON.stringify({
-			genres,
-		})
-	);
-});
-
 app.get("/start-fill-database", async (req, res, next) => {
 	await startBoilertube();
 
 	res.send("Fill this database to the brim!!");
-});
-
-app.get("/start-scrape-genres", async (req, res, next) => {
-	const videos = await prisma.video.findMany();
-	await scrapeGenres(videos);
-
-	res.send("Find genres!!");
 });
 
 // Functions
@@ -138,21 +108,6 @@ function getCountYoutubeVideos() {
 			"&key=" +
 			process.env.YOUTUBE_API_KEY
 	);
-}
-
-async function updateVideosWithGenres(video) {
-	try {
-		await prisma.video.update({
-			where: {
-				id: video.id,
-			},
-			data: {
-				genres: JSON.stringify(video.genres),
-			},
-		});
-	} catch (error) {
-		console.log("updateVideosWithGenres failed");
-	}
 }
 
 async function saveOrUpdateVideosWithDetails(video) {
@@ -237,75 +192,6 @@ async function startBoilertube() {
 }
 
 // Start the app
-async function scrapeGenres(videos) {
-	try {
-		const puppeteerOptions =
-			process.env.ENVIRONMENT === "production"
-				? {
-						executablePath: "chromium-browser",
-						dumpio: true,
-						headless: false,
-				  }
-				: {};
-
-		const browser = await puppeteer.launch(puppeteerOptions);
-		const page = await browser.newPage();
-
-		console.log("Start scraping genres for videos - ", videos.length);
-		for (let i = 0; i < videos.length; i++) {
-			try {
-				const existingVideo = await prisma.video.findUnique({
-					where: {
-						id: videos[i].id,
-					},
-				});
-
-				if (existingVideo && existingVideo?.genres?.length > 0) {
-					continue;
-				}
-
-				await page.goto(`https://boilerroom.tv/?s=${videos[i].title}`, {
-					waitUntil: "networkidle2",
-				});
-
-				const div = await page.$(`[class*='BroadcastGenres-BroadcastGenres']`);
-
-				if (!div) continue;
-
-				const spans = await div.$$("span");
-
-				if (!spans || spans.length < 1) continue;
-
-				const innerTextNodes = await Promise.all(
-					spans.map(async (span) => {
-						return span.getProperty("innerText");
-					})
-				);
-
-				const genres = await Promise.all(
-					innerTextNodes.map(async (innerTextNode) => {
-						return innerTextNode.jsonValue();
-					})
-				);
-
-				const video = Object.assign(videos[i], {
-					genres: `${genres}`,
-				});
-
-				console.log("Found genres", genres, "for", videos[i].title);
-				await updateVideosWithGenres(video);
-			} catch (error) {
-				console.log("Could't find genre for - ", videos[i].title, error);
-			}
-		}
-
-		await browser.close();
-	} catch (e) {
-		console.log("scrapeGenres", e);
-		await browser.close();
-	}
-}
-
 const server = http.createServer(app);
 server.listen(port, async () => {
 	console.log(`App running on port: ${port}`);
@@ -314,13 +200,5 @@ server.listen(port, async () => {
 			"Run startBoilertube at " + moment().format("MMMM Do YYYY, h:mm:ss a")
 		);
 		await startBoilertube();
-	});
-
-	cron.schedule("0 0 3 * * *", async () => {
-		console.log(
-			"Run scrapeGenres at " + moment().format("MMMM Do YYYY, h:mm:ss a")
-		);
-		const videos = await prisma.video.findMany();
-		await scrapeGenres(videos);
 	});
 });
