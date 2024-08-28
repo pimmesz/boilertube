@@ -1,6 +1,7 @@
 {
 	"name": "boilertube",
 	"type": "module",
+	"version": "1.0.11",
 	"scripts": {
 		"serve": "vite preview",
 		"build": "vite build --mode development",

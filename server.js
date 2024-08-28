@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
 import * as cron from "node-cron";
 import moment from "moment";
+import packageJson from './package.json' assert { type: 'json' };
 
 const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
@@ -25,6 +26,10 @@ app.get("/*", (req, res) => res.sendFile(path.join(__dirname)));
 dotenv.config();
 
 // Endpoints
+app.get("/version", (req, res, next) => {
+	res.send(`Version: ${packageJson.version}`);
+});
+
 app.get("/boilerroom-videos", async (req, res, next) => {
 	const fromDate = req.query.fromdate;
 	const toDate = req.query.todate;
