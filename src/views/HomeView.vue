@@ -10,65 +10,71 @@
 				offset-md="1"
 				lg="2"
 				offset-lg="1"
-				:class="{ fixed: !isMobile }"
 			>
-				<h1>BoilerTube</h1>
-				<p class="has-margin-bottom-16">
-					Most viewed Boilerroom Youtube videos in:
-				</p>
-				<div class="selector-divider">
-					<v-number-input
-					v-model="customRangeNumberInput"
-          control-variant="stacked"
-					reverse
-					:max="customRangeMax"
-          :min="customRangeMin"
-          inset
-        ></v-number-input>
-					<v-select
-						label="Select"
-						v-model="customRangeDateInput"
-						:items="['Day', 'Week', 'Month', 'Year']"
+				<div style="position: fixed; top: 40%;">
+					<h1>BoilerTube</h1>
+					<p class="has-margin-bottom-16">
+						Most viewed Boilerroom Youtube videos in:
+					</p>
+					<div class="selector-divider">
+						<v-number-input
+						v-model="customRangeNumberInput"
+						control-variant="stacked"
+						reverse
+						:max="customRangeMax"
+						:min="customRangeMin"
+						inset
+					></v-number-input>
+						<v-select
+							label="Select"
+							v-model="customRangeDateInput"
+							:items="['Day', 'Week', 'Month', 'Year']"
+							variant="outlined"
+							:item-title="customRangeDateInput"
+							:item-value="customRangeDateInput"
+							style="display: block"
+						></v-select>
+					</div>
+					<v-btn
 						variant="outlined"
-						:item-title="customRangeDateInput"
-    				:item-value="customRangeDateInput"
-						style="display: block"
-					></v-select>
+						class="has-margin-bottom-16"
+						:block="isMobile"
+						@click="
+							videoFilterDate = { days: 0, weeks: 0, months: 999 }
+						"
+						>Most viewed videos ever
+					</v-btn>
 				</div>
-				<v-btn
-					variant="outlined"
-					class="has-margin-bottom-16"
-					:block="isMobile"
-					:disabled="activeButton === 2"
-					@click="
-						(videoFilterDate = { days: 0, weeks: 0, months: 999 }),
-							(activeButton = 2)
-					"
-					>ever
-				</v-btn>
 			</v-col>
 			<v-col
-				cols="8"
+				cols="5"
 				offset="2"
-				sm="4"
-				offset-sm="6"
 				class="has-margin-bottom-16"
-				v-for="video in boilerRoomVideos"
 			>
-				<a
-					:href="`https://www.youtube.com/watch?v=${video?.id}`"
-					target="_blank"
-					class="video-link"
-				>
-					<img
-						:src="video?.thumbnails.high.url"
-						alt=""
-						class="video-link__image"
-					/>
-					<div class="video-link__text">
-						<p>{{ getHumanReadableNumber(video?.viewCount) }} views</p>
-					</div>
-				</a>
+				<div style="position: sticky; top: 76px; height: 100vh;">
+					<a
+						:href="`https://www.youtube.com/watch?v=${video?.id}`"
+						target="_blank"
+						class="video-link"
+						v-for="video in boilerRoomVideos"
+						v-if="!videosAreLoading"
+					>
+						<img
+							:src="video?.thumbnails.high.url"
+							alt=""
+							class="video-link__image"
+						/>
+						<div class="video-link__text">
+							<p>{{ getHumanReadableNumber(video?.viewCount) }} views</p>
+						</div>
+					</a>
+					<v-progress-circular
+							color="white"
+							indeterminate
+							style="position: absolute; top: 50%; left: 50%;"
+							v-else
+					></v-progress-circular>
+				</div>
 			</v-col>
 		</v-row>
 	</v-container>
@@ -92,24 +98,24 @@ export default {
 		const boilerRoomVideos = ref({});
 		const { width } = useDisplay();
 		const isMobile = ref(width.value < 600);
-		const activeButton = ref(0);
 		const videoFilterDate = ref({ days: 0, weeks: 0, months: 1 });
 		const items = ref([]);
 		const customRangeDateInput = ref('Month');
 		const customRangeNumberInput = ref(1);
 		const customRangeMax = ref(12);
 		const customRangeMin = ref(1);
+		const videosAreLoading = ref(false);
 
 		return {
 			boilerRoomVideos,
 			isMobile,
-			activeButton,
 			videoFilterDate,
 			items,
 			customRangeDateInput,
 			customRangeNumberInput,
 			customRangeMax,
-			customRangeMin
+			customRangeMin,
+			videosAreLoading
 		};
 	},
 	created() {
@@ -118,7 +124,6 @@ export default {
 	watch: {
 		// whenever videoFilterDate changes, this function will run
 		videoFilterDate(newVideoFilterDate) {
-			console.log('filter', newVideoFilterDate)
 			this.fetchVideos(newVideoFilterDate);
 		},
 		// whenever customRangeDateInput changes, this function will run
@@ -176,6 +181,7 @@ export default {
 		fetchVideos(
 			dateObject = { days: 0, weeks: 0, months: 0 }
 		) {
+			this.videosAreLoading = true;
 			let fromDate = new Date();
 			const { days, weeks, months } = dateObject;
 			// Per day
@@ -213,9 +219,11 @@ export default {
 						(video: any) => (video.thumbnails = JSON.parse(video.thumbnails))
 					);
 					this.boilerRoomVideos = data;
+					this.videosAreLoading = false;
 				})
 				.catch((error) => {
 					console.log(error);
+					this.videosAreLoading = false;
 				});
 		},
 		fetchVideosBetweenDates(rangeDates: any) {

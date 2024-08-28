@@ -53,6 +53,7 @@ app.get("/boilerroom-videos", async (req, res, next) => {
 });
 
 app.get("/start-fill-database", async (req, res, next) => {
+	console.log("Start filling database");
 	await startBoilertube();
 
 	res.send("Fill this database to the brim!!");
@@ -91,6 +92,7 @@ async function getVideoDetails(videoId) {
 		return {
 			id: videoDetails.id,
 			channel: videoDetails.snippet.channelTitle,
+			updatedAt: new Date(Date.now()).toISOString(),
 			publishedAt: videoDetails.snippet.publishedAt,
 			title: videoDetails.snippet.title,
 			thumbnails: JSON.stringify(videoDetails.snippet.thumbnails),
@@ -102,7 +104,6 @@ async function getVideoDetails(videoId) {
 }
 
 function getCountYoutubeVideos() {
-	console.log('RIGHT HERE', process.env.YOUTUBE_CHANNEL_ID)
 	return axios.get(
 		"https://www.googleapis.com/youtube/v3/playlistItems?playlistId=" +
 			process.env.YOUTUBE_CHANNEL_ID +
@@ -119,6 +120,8 @@ async function saveOrUpdateVideosWithDetails(video) {
 			},
 			update: {
 				viewCount: video.viewCount,
+				updatedAt: video.updatedAt,
+				channel: video.channel,
 			},
 			create: {
 				...video,
@@ -133,6 +136,9 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 	console.log('getVideoInfoPerYoutubePage')
 	// If pageToken is provided, use it to get the next page of videos
 	// Otherwise, get the first page of videos
+
+	// Google API usage overview
+	// https://console.cloud.google.com/iam-admin/quotas?project=boilerbot-373414
 	const url = pageToken
 		? "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&pageToken=" +
 		  pageToken +
@@ -190,6 +196,8 @@ async function startBoilertube() {
 	// If there are more videos on Youtube than in database, get new videos
 	if (countSavedVideos < countYoutubeVideos) {
 		getVideoInfoPerYoutubePage();
+	} else {
+		console.log("No new videos to add to database");
 	}
 }
 
