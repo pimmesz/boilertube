@@ -5,7 +5,8 @@
 	"scripts": {
 		"serve": "vite preview",
 		"build": "vite build --mode development",
-		"build:prod": "npx prisma generate && vite build --mode production && node server.js",
+		"build:prod": "npx prisma generate && vite build --mode production",
+		"start:prod": "node server.js",
 		"rebuild": "rm -rf dist && vite build --mode production && node server.js",
 		"lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
 		"build-only": "vite build",
