@@ -52,22 +52,28 @@
 				class="has-margin-bottom-16"
 			>
 				<div style="position: sticky; top: 76px; height: 100vh;">
-					<a
-						:href="`https://www.youtube.com/watch?v=${video?.id}`"
-						target="_blank"
-						class="video-link"
-						v-for="video in boilerRoomVideos"
-						v-if="!videosAreLoading"
+					<v-virtual-scroll
+					v-if="!videosAreLoading"
+						:height="800"
+						:items="boilerRoomVideos"
 					>
-						<img
-							:src="video?.thumbnails.high.url"
-							alt=""
-							class="video-link__image"
-						/>
-						<div class="video-link__text">
-							<p>{{ getHumanReadableNumber(video?.viewCount) }} views</p>
-						</div>
-					</a>
+						<template v-slot:default="{ item }">
+							<a
+								:href="`https://www.youtube.com/watch?v=${item?.id}`"
+								target="_blank"
+								class="video-link"
+							>
+								<img
+									:src="item?.thumbnails.high.url"
+									alt=""
+									class="video-link__image"
+								/>
+								<div class="video-link__text">
+									<p>{{ getHumanReadableNumber(item?.viewCount) }} views</p>
+								</div>
+							</a>
+						</template>
+				</v-virtual-scroll>
 					<v-progress-circular
 							color="white"
 							indeterminate
