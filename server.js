@@ -90,10 +90,10 @@ async function getVideoDetails(videoId) {
 
 		return {
 			id: videoDetails.id,
+			channel: videoDetails.snippet.channelTitle,
 			publishedAt: videoDetails.snippet.publishedAt,
 			title: videoDetails.snippet.title,
 			thumbnails: JSON.stringify(videoDetails.snippet.thumbnails),
-			genres: "",
 			viewCount: videoDetails.statistics.viewCount,
 		};
 	} catch (error) {
@@ -102,6 +102,7 @@ async function getVideoDetails(videoId) {
 }
 
 function getCountYoutubeVideos() {
+	console.log('RIGHT HERE', process.env.YOUTUBE_CHANNEL_ID)
 	return axios.get(
 		"https://www.googleapis.com/youtube/v3/playlistItems?playlistId=" +
 			process.env.YOUTUBE_CHANNEL_ID +
@@ -129,6 +130,7 @@ async function saveOrUpdateVideosWithDetails(video) {
 }
 
 function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
+	console.log('getVideoInfoPerYoutubePage')
 	// If pageToken is provided, use it to get the next page of videos
 	// Otherwise, get the first page of videos
 	const url = pageToken

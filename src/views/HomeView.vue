@@ -16,28 +16,28 @@
 				<p class="has-margin-bottom-16">
 					Most viewed Boilerroom Youtube videos in:
 				</p>
+				<div class="selector-divider">
+					<v-number-input
+					v-model="customRangeNumberInput"
+          control-variant="stacked"
+					reverse
+					:max="customRangeMax"
+          :min="customRangeMin"
+          inset
+        ></v-number-input>
+					<v-select
+						label="Select"
+						v-model="customRangeDateInput"
+						:items="['Day', 'Week', 'Month', 'Year']"
+						variant="outlined"
+						:item-title="customRangeDateInput"
+    				:item-value="customRangeDateInput"
+						style="display: block"
+					></v-select>
+				</div>
 				<v-btn
 					variant="outlined"
-					:disabled="activeButton === 0"
-					:block="isMobile"
-					@click="
-						(videoFilterDate = { days: 0, weeks: 0, months: 1 }),
-							(activeButton = 0)
-					"
-					>past month</v-btn
-				>
-				<v-btn
-					variant="outlined"
-					:block="isMobile"
-					:disabled="activeButton === 1"
-					@click="
-						(videoFilterDate = { days: 0, weeks: 0, months: 6 }),
-							(activeButton = 1)
-					"
-					>past six months</v-btn
-				>
-				<v-btn
-					variant="outlined"
+					class="has-margin-bottom-16"
 					:block="isMobile"
 					:disabled="activeButton === 2"
 					@click="
@@ -46,14 +46,6 @@
 					"
 					>ever
 				</v-btn>
-				<Datepicker
-					class="has-margin-bottom-16"
-					v-model="rangeDate"
-					placeholder="Select a Date Range"
-					:max-date="new Date()"
-					month-picker
-					range
-				></Datepicker>
 			</v-col>
 			<v-col
 				cols="8"
@@ -102,30 +94,79 @@ export default {
 		const isMobile = ref(width.value < 600);
 		const activeButton = ref(0);
 		const videoFilterDate = ref({ days: 0, weeks: 0, months: 1 });
-		const rangeDate = ref();
 		const items = ref([]);
+		const customRangeDateInput = ref('Month');
+		const customRangeNumberInput = ref(1);
+		const customRangeMax = ref(12);
+		const customRangeMin = ref(1);
 
 		return {
 			boilerRoomVideos,
 			isMobile,
 			activeButton,
 			videoFilterDate,
-			rangeDate,
 			items,
+			customRangeDateInput,
+			customRangeNumberInput,
+			customRangeMax,
+			customRangeMin
 		};
 	},
 	created() {
 		this.fetchVideos({ days: 0, weeks: 0, months: 1 });
 	},
 	watch: {
-		// whenever question changes, this function will run
-		rangeDate(newRangeDate) {
-			this.activeButton = -1;
-			this.fetchVideosBetweenDates(newRangeDate);
-		},
-		// whenever question changes, this function will run
+		// whenever videoFilterDate changes, this function will run
 		videoFilterDate(newVideoFilterDate) {
+			console.log('filter', newVideoFilterDate)
 			this.fetchVideos(newVideoFilterDate);
+		},
+		// whenever customRangeDateInput changes, this function will run
+		customRangeDateInput(newCustomRangeDateInput) {
+			switch (newCustomRangeDateInput) {
+				case 'Day':
+					this.customRangeMax = 31;
+					this.customRangeMin = 1;
+					this.videoFilterDate = { days: this.customRangeNumberInput, weeks: 0, months: 0 }
+					break;
+				case 'Week':
+					this.customRangeMax = 52;
+					this.customRangeMin = 1;
+					this.videoFilterDate = { days: 0, weeks: this.customRangeNumberInput, months: 0 }
+					break;
+				case 'Month':
+					this.customRangeMax = 12;
+					this.customRangeMin = 1;
+					this.videoFilterDate = { days: 0, weeks: 0, months: this.customRangeNumberInput }
+					break;
+				case 'Year':
+					this.customRangeMax = 10;
+					this.customRangeMin = 1;
+					this.videoFilterDate = { days: 0, weeks: 0, months: this.customRangeNumberInput * 12 }
+					break;
+			}
+
+			// If the input is greater than the max, set it to the max
+			if (this.customRangeNumberInput > this.customRangeMax) {
+				this.customRangeNumberInput = this.customRangeMax;
+			}
+		},
+		// whenever customRangeNumberInput changes, this function will run
+		customRangeNumberInput(newCustomRangeNumberInput) {
+			switch (this.customRangeDateInput) {
+				case 'Day':
+					this.videoFilterDate = { days: newCustomRangeNumberInput, weeks: 0, months: 0 }
+					break;
+				case 'Week':
+					this.videoFilterDate = { days: 0, weeks: newCustomRangeNumberInput, months: 0 }
+					break;
+				case 'Month':
+					this.videoFilterDate = { days: 0, weeks: 0, months: newCustomRangeNumberInput }
+					break;
+				case 'Year':
+					this.videoFilterDate = { days: 0, weeks: 0, months: newCustomRangeNumberInput * 12 }
+					break;
+			}
 		},
 	},
 	methods: {
@@ -156,8 +197,12 @@ export default {
 			}
 
 			// https://boilertube.pim.gg
+			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
+				? "https://boilertube.pim.gg"
+				: "http://localhost:3003";
+
 			axios
-				.get("https://boilertube.pim.gg/boilerroom-videos", {
+				.get(`${baseUrl}/boilerroom-videos`, {
 					params: {
 						fromdate: fromDate,
 					},
@@ -247,5 +292,11 @@ export default {
 }
 .dp__overlay_cell_disabled:hover {
 	color: gray;
+}
+
+.selector-divider {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 1rem;
 }
 </style>

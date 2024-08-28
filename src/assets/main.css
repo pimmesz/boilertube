@@ -45,30 +45,3 @@ body {
 .has-margin-right-8 {
 	margin-right: 8px;
 }
-
-.material-icons {
-	position: absolute;
-	right: 16px;
-	top: 50%;
-	transform: translateY(-50%);
-}
-
-.v-btn {
-	border: none;
-	background: transparent;
-	color: white;
-	padding: 10px 50px;
-	transition: all 200ms ease-in;
-	border: 2px solid white;
-	margin-bottom: 16px;
-	width: auto;
-	position: relative;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.v-btn .v-icon {
-	position: absolute;
-	right: 20px;
-}

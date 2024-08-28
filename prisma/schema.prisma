@@ -10,9 +10,9 @@ datasource db {
 
 model Video {
   id             String @id
-  publishedAt    String
-  title          String
-  thumbnails     String
-  genres         String
-  viewCount      String
+  channel        String @default("no_value")
+  publishedAt    String @default("no_value")
+  title          String @default("no_value")
+  thumbnails     String @default("no_value")
+  viewCount      String @default("no_value")
 }
