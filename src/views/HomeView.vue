@@ -51,10 +51,10 @@
 				offset="2"
 				class="has-margin-bottom-16"
 			>
-				<div style="position: sticky; top: 76px; height: 100vh;">
+				<div class="infinite-scroll">
 					<v-virtual-scroll
 					v-if="!videosAreLoading"
-						:height="800"
+						:height="1500"
 						:items="boilerRoomVideos"
 					>
 						<template v-slot:default="{ item }">
@@ -210,7 +210,7 @@ export default {
 
 			// https://boilertube.pim.gg
 			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
-				? "https://boilertube.pim.gg"
+				? "https://tubeyt-pims-projects-72c33ea0.vercel.app"
 				: "http://localhost:3003";
 
 			axios
@@ -313,4 +313,23 @@ export default {
 	justify-content: space-between;
 	margin-top: 1rem;
 }
+
+.infinite-scroll {
+	position: sticky;
+	top: 76px;
+	height: 90vh;
+	overflow: hidden;
+}
+
+.infinite-scroll::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 20px; /* Adjust height based on your design */
+  pointer-events: none; /* Ensures the shadow doesn't block interaction with items */
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255,255,255, 0.8));
+}
+	
 </style>
