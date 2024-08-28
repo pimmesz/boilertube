@@ -9,7 +9,7 @@ import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
 import * as cron from "node-cron";
 import moment from "moment";
-import packageJson from './package.json' assert { type: 'json' };
+import packageJson from '../package.json' assert { type: 'json' };
 
 const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
@@ -17,7 +17,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3003;
 
-app.use(express.static(__dirname + "/dist"));
+app.use(express.static(__dirname + "./../dist"));
 app.use(bodyParser.json());
 app.use(cors());
 
