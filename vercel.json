@@ -4,18 +4,5 @@
 			"path": "/api/cron",
 			"schedule": "0 10 * * *"
 		}
-	],
-	"builds": [
-		{
-			"src": "package.json",
-			"use": "@vercel/node",
-			"config": {
-				"includeFiles": ["prisma/schema.prisma"]
-			}
-		}
-	],
-	"scripts": {
-		"prebuild": "prisma generate",
-		"build": "npm run build & node server.js"
-	}
+	]
 }
