@@ -2,16 +2,17 @@
 	<v-container class="fill-height">
 		<v-row no-gutters>
 			<v-col
-				cols="8"
-				offset="2"
-				sm="4"
-				offset-sm="0"
+				cols="12"
+				sm="5"
+				offset-sm="1"
 				md="3"
 				offset-md="1"
 				lg="2"
 				offset-lg="1"
+				xl="2"
+				offset-xl="1"
 			>
-				<div style="position: fixed; top: 40%;">
+				<div class="filter">
 					<h1>BoilerTube</h1>
 					<p class="has-margin-bottom-16">
 						Most viewed Boilerroom Youtube videos in:
@@ -28,11 +29,10 @@
 						<v-select
 							label="Select"
 							v-model="customRangeDateInput"
-							:items="['Day', 'Week', 'Month', 'Year']"
+							:items="['Week', 'Month', 'Year']"
 							variant="outlined"
 							:item-title="customRangeDateInput"
 							:item-value="customRangeDateInput"
-							style="display: block"
 						></v-select>
 					</div>
 					<v-btn
@@ -47,33 +47,41 @@
 				</div>
 			</v-col>
 			<v-col
-				cols="5"
-				offset="2"
+				cols="12"
+				sm="4"
+				offset-sm="2"
+				md="5"
+				offset-md="3"
+				lg="5"
+				offset-lg="3"
+				xl="5"
+				offset-xl="2"
 				class="has-margin-bottom-16"
 			>
 				<div class="infinite-scroll">
-					<v-virtual-scroll
-					v-if="!videosAreLoading"
-						:height="1500"
-						:items="boilerRoomVideos"
-					>
-						<template v-slot:default="{ item }">
-							<a
-								:href="`https://www.youtube.com/watch?v=${item?.id}`"
-								target="_blank"
-								class="video-link"
-							>
-								<img
-									:src="item?.thumbnails.high.url"
-									alt=""
-									class="video-link__image"
-								/>
-								<div class="video-link__text">
-									<p>{{ getHumanReadableNumber(item?.viewCount) }} views</p>
-								</div>
-							</a>
-						</template>
-				</v-virtual-scroll>
+					<div :class="boilerRoomVideos?.length > 3 ? 'video-list' : ''" v-if="!videosAreLoading">
+						<v-virtual-scroll
+							:height="1500"
+							:items="boilerRoomVideos"
+						>
+							<template v-slot:default="{ item }">
+								<a
+									:href="`https://www.youtube.com/watch?v=${item?.id}`"
+									target="_blank"
+									class="video-link"
+								>
+									<img
+										:src="item?.thumbnails.high.url"
+										alt=""
+										class="video-link__image"
+									/>
+									<div class="video-link__text">
+										<p>{{ getHumanReadableNumber(item?.viewCount) }} views</p>
+									</div>
+								</a>
+							</template>
+					</v-virtual-scroll>
+					</div>
 					<v-progress-circular
 							color="white"
 							indeterminate
@@ -135,11 +143,6 @@ export default {
 		// whenever customRangeDateInput changes, this function will run
 		customRangeDateInput(newCustomRangeDateInput) {
 			switch (newCustomRangeDateInput) {
-				case 'Day':
-					this.customRangeMax = 31;
-					this.customRangeMin = 1;
-					this.videoFilterDate = { days: this.customRangeNumberInput, weeks: 0, months: 0 }
-					break;
 				case 'Week':
 					this.customRangeMax = 52;
 					this.customRangeMin = 1;
@@ -165,9 +168,6 @@ export default {
 		// whenever customRangeNumberInput changes, this function will run
 		customRangeNumberInput(newCustomRangeNumberInput) {
 			switch (this.customRangeDateInput) {
-				case 'Day':
-					this.videoFilterDate = { days: newCustomRangeNumberInput, weeks: 0, months: 0 }
-					break;
 				case 'Week':
 					this.videoFilterDate = { days: 0, weeks: newCustomRangeNumberInput, months: 0 }
 					break;
@@ -259,12 +259,31 @@ export default {
 </script>
 
 <style scoped>
-.fixed {
-	position: fixed;
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
+.filter {
+	@media only screen and (min-width: 600px) {
+		position: fixed;
+		top: 40%;
+	}
+}
+
+.infinite-scroll {
+	@media only screen and (min-width: 600px) {
+		position: sticky;
+		top: 76px;
+		height: 90vh;
+		overflow: hidden;
+	}
+}
+
+.video-list::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 20px; /* Adjust height based on your design */
+  pointer-events: none; /* Ensures the shadow doesn't block interaction with items */
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255,255,255, 0.8));
 }
 
 .video-link {
@@ -301,35 +320,16 @@ export default {
 	left: 10px;
 }
 
-.dp__overlay_cell_disabled {
-	color: gray;
-}
-.dp__overlay_cell_disabled:hover {
-	color: gray;
-}
-
 .selector-divider {
 	display: flex;
 	justify-content: space-between;
 	margin-top: 1rem;
 }
 
-.infinite-scroll {
-	position: sticky;
-	top: 76px;
-	height: 90vh;
-	overflow: hidden;
-}
-
-.infinite-scroll::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 20px; /* Adjust height based on your design */
-  pointer-events: none; /* Ensures the shadow doesn't block interaction with items */
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255,255,255, 0.8));
+/* Overrule Vuetify */
+.v-number-input {
+	max-width: 100px;
+	margin-right: 20px;
 }
 	
 </style>
