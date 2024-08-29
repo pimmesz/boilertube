@@ -22,7 +22,7 @@ app.use(bodyParser.json());
 app.use(cors());
 app.use((req, res, next) => {
 	const subdomain = stripSubdomain(req.headers.origin);
-	console.log('HERE', host)
+	console.log('HERE', subdomain)
 	req.subdomain = subdomain;
 	next();
 });
