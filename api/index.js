@@ -20,11 +20,11 @@ const port = process.env.PORT || 3003;
 app.use(express.static(__dirname + "./../dist"));
 app.use(bodyParser.json());
 app.use(cors());
-app.use((req, res, next) => {
-	const subdomain = getSubdomain(req.headers.origin);
-	req.subdomain = subdomain;
-	next();
-});
+// app.use((req, res, next) => {
+// 	const subdomain = getSubdomain(req.headers.origin);
+// 	req.subdomain = subdomain;
+// 	next();
+// });
 
 dotenv.config();
 
@@ -38,11 +38,12 @@ app.get("/videos", async (req, res, next) => {
 	const channel = req.query.channel;
 
 	if (fromDate) {
-		const fromDateVideos = await getAllVideosBetweenDates(fromDate);
+		const fromDateVideos = await getAllVideosBetweenDates(channel, fromDate);
 
 		res.send(
 			JSON.stringify({
-				fromDateVideos: fromDateVideos,
+				channel,
+				fromDateVideos,
 			})
 		);
 		return;
@@ -58,13 +59,13 @@ app.get("/start-fill-database", async (req, res, next) => {
 
 // Functions
 async function getAllVideosBetweenDates(
-	fromDate = undefined,
-	toDate = undefined
+	channel = '',
+	fromDate = '',
 ) {
 	const videos = await prisma.video.findMany({
 		where: {
+			channel,
 			publishedAt: {
-				lte: toDate,
 				gte: fromDate,
 			},
 		},
@@ -78,17 +79,17 @@ async function getAllVideosBetweenDates(
 		.filter((video) => Number(video.viewCount) !== 0);
 }
 
-function getSubdomain(url) {
-	let urlObj = new URL(url);
-	let hostname = urlObj.hostname;
+// function getSubdomain(url) {
+// 	let urlObj = new URL(url);
+// 	let hostname = urlObj.hostname;
 	
-	let hostnameParts = hostname.split('.');
-	if (hostnameParts.length > 2) {
-			return hostnameParts[0]; // Return the first part, which is the subdomain
-	} else {
-			return null; // No subdomain present
-	}
-}
+// 	let hostnameParts = hostname.split('.');
+// 	if (hostnameParts.length > 2) {
+// 			return hostnameParts[0]; // Return the first part, which is the subdomain
+// 	} else {
+// 			return null; // No subdomain present
+// 	}
+// }
 
 async function getVideoDetails(videoId) {
 	try {

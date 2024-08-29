@@ -12,7 +12,7 @@
 				xl="2"
 				offset-xl="1"
 			>
-				<div class="filter">
+				<div class="video-filter">
 					<h1>{{ subdomain }}</h1>
 					<p class="has-margin-bottom-16">
 						Most viewed {{ subdomain }} Youtube videos in:
@@ -251,11 +251,11 @@ export default {
 </script>
 
 <style scoped>
-.filter {
-	/* @media only screen and (min-width: 600px) {
+.video-filter {
+	@media only screen and (min-width: 600px) {
 		position: fixed;
 		top: 40%;
-	} */
+	}
 }
 
 .infinite-scroll {
