@@ -23,7 +23,7 @@ app.use(cors());
 app.use((req, res, next) => {
 	const host = req.headers.host;
 	const subdomain = host.split('.')[0]; // assuming subdomains like sub.example.com
-	console.log('HERE', host, subdomain)
+	console.log('HERE', req.headers, host, subdomain)
 	req.subdomain = subdomain;
 	next();
 });
