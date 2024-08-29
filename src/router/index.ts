@@ -3,17 +3,17 @@ import HomeView from "../views/HomeView.vue";
 import Test from "../views/Test.vue";
 
 // Function to get the subdomain
-function getSubdomain() {
+function hasSubdomain() {
 	const host = window.location.hostname;
 	const parts = host.split(".");
 	if (parts.length > 2) {
-		return parts[0]; // Assuming subdomain is the first part of the hostname
+		return true;
 	}
-	return null;
+	return false;
 }
 
 // Determine the appropriate component based on the subdomain
-const homeComponent = getSubdomain() ? Test : HomeView;
+const homeComponent = hasSubdomain() ? Test : HomeView;
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.BASE_URL),
