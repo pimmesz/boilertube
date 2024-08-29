@@ -22,22 +22,9 @@ app.use(bodyParser.json());
 app.use(cors());
 app.use((req, res, next) => {
 	const subdomain = getSubdomain(req.headers.origin);
-	console.log('HERE', subdomain)
 	req.subdomain = subdomain;
 	next();
 });
-
-app.get('/', (req, res) => {
-	if (req.subdomain === 'admin') {
-			res.send('Admin area');
-	} else if (req.subdomain === 'user') {
-			res.send('User area');
-	} else {
-			res.send('Main website');
-	}
-});
-
-app.get("/*", (req, res) => res.sendFile(path.join(__dirname)));
 
 dotenv.config();
 
