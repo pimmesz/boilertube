@@ -21,7 +21,7 @@ app.use(express.static(__dirname + "./../dist"));
 app.use(bodyParser.json());
 app.use(cors());
 app.use((req, res, next) => {
-	const subdomain = stripSubdomain(req.headers.origin);
+	const subdomain = getSubdomain(req.headers.origin);
 	console.log('HERE', subdomain)
 	req.subdomain = subdomain;
 	next();
@@ -102,17 +102,16 @@ async function getAllVideosBetweenDates(
 		.filter((video) => Number(video.viewCount) !== 0);
 }
 
-function stripSubdomain(url) {
+function getSubdomain(url) {
 	let urlObj = new URL(url);
 	let hostname = urlObj.hostname;
 	
 	let hostnameParts = hostname.split('.');
 	if (hostnameParts.length > 2) {
-			hostnameParts.shift(); // Remove the first part, which is the subdomain
+			return hostnameParts[0]; // Return the first part, which is the subdomain
+	} else {
+			return null; // No subdomain present
 	}
-
-	let strippedHostname = hostnameParts.join('.');
-	return urlObj.protocol + "//" + strippedHostname + urlObj.pathname;
 }
 
 async function getVideoDetails(videoId) {
