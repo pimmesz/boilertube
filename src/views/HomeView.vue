@@ -17,6 +17,7 @@ export default {
 		Datepicker,
 	},
 	setup() {
+		const subdomain = ref('');
 		const boilerRoomVideos = ref({});
 		const { width } = useDisplay();
 		const isMobile = ref(width.value < 600);
@@ -166,78 +167,5 @@ export default {
 };
 </script>
 
-<style scoped>
-.filter {
-	@media only screen and (min-width: 600px) {
-		position: fixed;
-		top: 40%;
-	}
-}
-
-.infinite-scroll {
-	@media only screen and (min-width: 600px) {
-		position: sticky;
-		top: 76px;
-		height: 90vh;
-		overflow: hidden;
-	}
-}
-
-.video-list::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 20px; /* Adjust height based on your design */
-  pointer-events: none; /* Ensures the shadow doesn't block interaction with items */
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255,255,255, 0.8));
-}
-
-.video-link {
-	color: white;
-	text-decoration: none;
-	position: relative;
-	display: block;
-	transform: scale(1);
-	transition: all 0.2s ease-in-out;
-}
-
-.video-link:hover {
-	transform: scale(1.01);
-	transition: all 0.2s ease-in-out;
-}
-
-.video-link__image {
-	transition: all 0.2s ease-in-out;
-	box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
-	width: 100%;
-}
-
-.video-link__image:hover {
-	transition: all 0.2s ease-in-out;
-	box-shadow: rgba(0, 0, 0, 0.6) 0px 5px 20px;
-}
-
-.video-link__text {
-	font-size: 1rem;
-	font-weight: 500;
-	margin-top: 0.5rem;
-	position: absolute;
-	top: 0;
-	left: 10px;
-}
-
-.selector-divider {
-	display: flex;
-	justify-content: space-between;
-	margin-top: 1rem;
-}
-
-/* Overrule Vuetify */
-.v-number-input {
-	max-width: 100px;
-	margin-right: 20px;
-}
-	
+<style scoped>	
 </style>

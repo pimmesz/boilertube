@@ -15,7 +15,7 @@
 				<div class="filter">
 					<h1>BoilerTube</h1>
 					<p class="has-margin-bottom-16">
-						Most viewed Boilerroom Youtube videos in:
+						Most viewed {{ subdomain }} Youtube videos in:
 					</p>
 					<div class="selector-divider">
 						<v-number-input
@@ -109,33 +109,34 @@ export default {
 		Datepicker,
 	},
 	setup() {
-		const boilerRoomVideos = ref({});
 		const { width } = useDisplay();
-		const isMobile = ref(width.value < 600);
-		const videoFilterDate = ref({ days: 0, weeks: 0, months: 1 });
-		const items = ref([]);
+		const boilerRoomVideos = ref({});
 		const customRangeDateInput = ref('Month');
-		const customRangeNumberInput = ref(1);
 		const customRangeMax = ref(12);
 		const customRangeMin = ref(1);
+		const customRangeNumberInput = ref(1);
+		const isMobile = ref(width.value < 600);
+		const items = ref([]);
+		const subdomain = ref('');
+		const videoFilterDate = ref({ days: 0, weeks: 0, months: 1 });
 		const videosAreLoading = ref(false);
 
 		return {
 			boilerRoomVideos,
-			isMobile,
-			videoFilterDate,
-			items,
 			customRangeDateInput,
-			customRangeNumberInput,
 			customRangeMax,
 			customRangeMin,
+			customRangeNumberInput,
+			isMobile,
+			items,
+			subdomain,
+			videoFilterDate,
 			videosAreLoading
 		};
 	},
 	created() {
 		this.fetchVideos({ days: 0, weeks: 0, months: 1 });
-		const subdomain = this.getSubdomain();
-    console.log('Subdomain:', subdomain);
+		this.subdomain = this.getSubdomain();
 	},
 	watch: {
 		// whenever videoFilterDate changes, this function will run
@@ -190,9 +191,9 @@ export default {
       const host = window.location.hostname;
       const parts = host.split(".");
       if (parts.length > 2) {
-        return parts[0]; // Assuming subdomain is the first part of the hostname
+        return parts[0];
       }
-      return null;
+      return '';
     },
 		fetchVideos(
 			dateObject = { days: 0, weeks: 0, months: 0 }
@@ -218,13 +219,12 @@ export default {
 				fromDate.toISOString();
 			}
 
-			// https://boilertube.pim.gg
 			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
 				? "https://tube.yt"
 				: "http://localhost:3003";
 
 			axios
-				.get(`${baseUrl}/boilerroom-videos`, {
+				.get(`${baseUrl}/videos`, {
 					params: {
 						fromdate: fromDate,
 					},

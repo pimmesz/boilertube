@@ -33,7 +33,7 @@ app.get("/version", (req, res, next) => {
 	res.send(`Version: ${packageJson.version}`);
 });
 
-app.get("/boilerroom-videos", async (req, res, next) => {
+app.get("/videos", async (req, res, next) => {
 	const fromDate = req.query.fromdate;
 	const toDate = req.query.todate;
 
