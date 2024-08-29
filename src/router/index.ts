@@ -14,6 +14,7 @@ function getSubdomain() {
 
 // Determine the appropriate component based on the subdomain
 const homeComponent = getSubdomain() === "subdomain" ? Test : HomeView;
+console.log('HERE', getSubdomain())
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.BASE_URL),
