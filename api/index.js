@@ -20,6 +20,23 @@ const port = process.env.PORT || 3003;
 app.use(express.static(__dirname + "./../dist"));
 app.use(bodyParser.json());
 app.use(cors());
+app.use((req, res, next) => {
+	const host = req.headers.host;
+	const subdomain = host.split('.')[0]; // assuming subdomains like sub.example.com
+	console.log('HERE', host, subdomain)
+	req.subdomain = subdomain;
+	next();
+});
+
+app.get('/', (req, res) => {
+	if (req.subdomain === 'admin') {
+			res.send('Admin area');
+	} else if (req.subdomain === 'user') {
+			res.send('User area');
+	} else {
+			res.send('Main website');
+	}
+});
 
 app.get("/*", (req, res) => res.sendFile(path.join(__dirname)));
 
