@@ -80,17 +80,17 @@ async function getAllVideosBetweenDates(
 		.filter((video) => Number(video.viewCount) !== 0);
 }
 
-// function getSubdomain(url) {
-// 	let urlObj = new URL(url);
-// 	let hostname = urlObj.hostname;
+function getSubdomain(url) {
+	let urlObj = new URL(url);
+	let hostname = urlObj.hostname;
 	
-// 	let hostnameParts = hostname.split('.');
-// 	if (hostnameParts.length > 2) {
-// 			return hostnameParts[0]; // Return the first part, which is the subdomain
-// 	} else {
-// 			return null; // No subdomain present
-// 	}
-// }
+	let hostnameParts = hostname.split('.');
+	if (hostnameParts.length > 2) {
+			return hostnameParts[0]; // Return the first part, which is the subdomain
+	} else {
+			return null; // No subdomain present
+	}
+}
 
 async function getVideoDetails(videoId) {
 	try {
