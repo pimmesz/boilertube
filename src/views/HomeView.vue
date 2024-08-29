@@ -210,7 +210,7 @@ export default {
 
 			// https://boilertube.pim.gg
 			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
-				? "https://tubeyt-pims-projects-72c33ea0.vercel.app"
+				? "https://www.tube.yt"
 				: "http://localhost:3003";
 
 			axios
