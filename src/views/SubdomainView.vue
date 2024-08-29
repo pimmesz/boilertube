@@ -260,7 +260,7 @@ export default {
 
 .infinite-scroll {
 	@media only screen and (min-width: 600px) {
-		position: sticky;
+		position: fixed;
 		top: 76px;
 		height: 90vh;
 		overflow: hidden;
