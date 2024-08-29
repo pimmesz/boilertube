@@ -21,9 +21,8 @@ app.use(express.static(__dirname + "./../dist"));
 app.use(bodyParser.json());
 app.use(cors());
 app.use((req, res, next) => {
-	const host = req.headers.host;
-	const subdomain = host.split('.')[0]; // assuming subdomains like sub.example.com
-	console.log('HERE', req.headers, host, subdomain)
+	const subdomain = stripSubdomain(req.headers.origin);
+	console.log('HERE', host)
 	req.subdomain = subdomain;
 	next();
 });
@@ -101,6 +100,19 @@ async function getAllVideosBetweenDates(
 			return b.viewCount - a.viewCount;
 		})
 		.filter((video) => Number(video.viewCount) !== 0);
+}
+
+function stripSubdomain(url) {
+	let urlObj = new URL(url);
+	let hostname = urlObj.hostname;
+	
+	let hostnameParts = hostname.split('.');
+	if (hostnameParts.length > 2) {
+			hostnameParts.shift(); // Remove the first part, which is the subdomain
+	}
+
+	let strippedHostname = hostnameParts.join('.');
+	return urlObj.protocol + "//" + strippedHostname + urlObj.pathname;
 }
 
 async function getVideoDetails(videoId) {
