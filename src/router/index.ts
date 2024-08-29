@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
-import Test from "../views/Test.vue";
+import SubdomainView from "../views/SubdomainView.vue";
 
 // Function to get the subdomain
 function hasSubdomain() {
@@ -13,7 +13,7 @@ function hasSubdomain() {
 }
 
 // Determine the appropriate component based on the subdomain
-const homeComponent = hasSubdomain() ? Test : HomeView;
+const homeComponent = import.meta.env.VITE_ENVIRONMENT === 'local' || hasSubdomain() ? SubdomainView : HomeView;
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.BASE_URL),

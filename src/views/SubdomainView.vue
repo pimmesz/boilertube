@@ -13,7 +13,7 @@
 				offset-xl="1"
 			>
 				<div class="filter">
-					<h1>BoilerTube</h1>
+					<h1>{{ subdomain }}</h1>
 					<p class="has-margin-bottom-16">
 						Most viewed {{ subdomain }} Youtube videos in:
 					</p>
@@ -59,10 +59,10 @@
 				class="has-margin-bottom-16"
 			>
 				<div class="infinite-scroll">
-					<div :class="boilerRoomVideos?.length > 3 ? 'video-list' : ''" v-if="!videosAreLoading">
+					<div :class="videos?.length > 3 ? 'video-list' : ''" v-if="!videosAreLoading">
 						<v-virtual-scroll
 							:height="1500"
-							:items="boilerRoomVideos"
+							:items="videos"
 						>
 							<template v-slot:default="{ item }">
 								<a
@@ -110,7 +110,7 @@ export default {
 	},
 	setup() {
 		const { width } = useDisplay();
-		const boilerRoomVideos = ref({});
+		const videos = ref({});
 		const customRangeDateInput = ref('Month');
 		const customRangeMax = ref(12);
 		const customRangeMin = ref(1);
@@ -122,7 +122,7 @@ export default {
 		const videosAreLoading = ref(false);
 
 		return {
-			boilerRoomVideos,
+			videos,
 			customRangeDateInput,
 			customRangeMax,
 			customRangeMin,
@@ -135,8 +135,8 @@ export default {
 		};
 	},
 	created() {
-		this.fetchVideos({ days: 0, weeks: 0, months: 1 });
 		this.subdomain = this.getSubdomain();
+		this.fetchVideos({ days: 0, weeks: 0, months: 1 });
 	},
 	watch: {
 		// whenever videoFilterDate changes, this function will run
@@ -187,7 +187,10 @@ export default {
 		getHumanReadableNumber(number: number) {
 			return numeral(number).format("0,0a");
 		},
-    getSubdomain(): string | null {
+    getSubdomain(): string {
+			if (import.meta.env.VITE_ENVIRONMENT === "local") {
+				return 'xxx'
+			}
       const host = window.location.hostname;
       const parts = host.split(".");
       if (parts.length > 2) {
@@ -227,6 +230,7 @@ export default {
 				.get(`${baseUrl}/videos`, {
 					params: {
 						fromdate: fromDate,
+						channel: this.subdomain,
 					},
 				})
 				.then((response) => {
@@ -234,34 +238,12 @@ export default {
 					data.forEach(
 						(video: any) => (video.thumbnails = JSON.parse(video.thumbnails))
 					);
-					this.boilerRoomVideos = data;
+					this.videos = data;
 					this.videosAreLoading = false;
 				})
 				.catch((error) => {
 					console.log(error);
 					this.videosAreLoading = false;
-				});
-		},
-		fetchVideosBetweenDates(rangeDates: any) {
-			let toDate = new Date(rangeDates[1].year, rangeDates[1].month, 1);
-			let fromDate = new Date(rangeDates[0].year, rangeDates[0].month, 1);
-
-			axios
-				.get("https://boilertube.pim.gg/boilerroom-videos", {
-					params: {
-						fromdate: fromDate,
-						todate: toDate,
-					},
-				})
-				.then((response) => {
-					const data = response.data.betweenDateVideos;
-					data.forEach(
-						(video: any) => (video.thumbnails = JSON.parse(video.thumbnails))
-					);
-					this.boilerRoomVideos = data;
-				})
-				.catch((error) => {
-					console.log(error);
 				});
 		},
 	},

@@ -35,18 +35,7 @@ app.get("/version", (req, res, next) => {
 
 app.get("/videos", async (req, res, next) => {
 	const fromDate = req.query.fromdate;
-	const toDate = req.query.todate;
-
-	if (fromDate && toDate) {
-		const betweenDateVideos = await getAllVideosBetweenDates(fromDate, toDate);
-
-		res.send(
-			JSON.stringify({
-				betweenDateVideos: betweenDateVideos,
-			})
-		);
-		return;
-	}
+	const channel = req.query.channel;
 
 	if (fromDate) {
 		const fromDateVideos = await getAllVideosBetweenDates(fromDate);
