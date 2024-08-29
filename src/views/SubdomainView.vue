@@ -80,7 +80,7 @@
 									</div>
 								</a>
 							</template>
-					</v-virtual-scroll>
+						</v-virtual-scroll>
 					</div>
 					<v-progress-circular
 							color="white"
@@ -252,10 +252,10 @@ export default {
 
 <style scoped>
 .filter {
-	@media only screen and (min-width: 600px) {
+	/* @media only screen and (min-width: 600px) {
 		position: fixed;
 		top: 40%;
-	}
+	} */
 }
 
 .infinite-scroll {
