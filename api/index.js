@@ -20,11 +20,11 @@ const port = process.env.PORT || 3003;
 app.use(express.static(__dirname + "./../dist"));
 app.use(bodyParser.json());
 app.use(cors());
-// app.use((req, res, next) => {
-// 	const subdomain = getSubdomain(req.headers.origin);
-// 	req.subdomain = subdomain;
-// 	next();
-// });
+app.use((req, res, next) => {
+	const subdomain = getSubdomain(req.headers.origin);
+	req.subdomain = subdomain;
+	next();
+});
 
 dotenv.config();
 
@@ -52,7 +52,8 @@ app.get("/videos", async (req, res, next) => {
 
 app.get("/start-fill-database", async (req, res, next) => {
 	console.log("Start filling database");
-	await startBoilertube();
+	// await getVideos();
+	console.log(req.subdomain)
 
 	res.send("Fill this database to the brim!!");
 });
@@ -101,7 +102,7 @@ async function getVideoDetails(videoId) {
 
 		return {
 			id: videoDetails.id,
-			channel: videoDetails.snippet.channelTitle,
+			channel: videoDetails.snippet.channelTitle.replaceAll(' ', '').toLocaleLowerCase(),
 			updatedAt: new Date(Date.now()).toISOString(),
 			publishedAt: videoDetails.snippet.publishedAt,
 			title: videoDetails.snippet.title,
@@ -193,8 +194,8 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 }
 
 // Start the app
-async function startBoilertube() {
-	// Get count of Boilerroom Youtube videos from their API
+async function getVideos() {
+	// Get count of Youtube videos from their API
 	const countYoutubeVideosResponse = await getCountYoutubeVideos();
 	const countYoutubeVideos = Number(
 		countYoutubeVideosResponse?.data?.pageInfo?.totalResults
@@ -217,8 +218,8 @@ server.listen(port, async () => {
 	console.log(`App running on port: ${port}`);
 	cron.schedule("0 0 0 * * *", async () => {
 		console.log(
-			"Run startBoilertube at " + moment().format("MMMM Do YYYY, h:mm:ss a")
+			"Run getVideos at " + moment().format("MMMM Do YYYY, h:mm:ss a")
 		);
-		await startBoilertube();
+		await getVideos();
 	});
 });
