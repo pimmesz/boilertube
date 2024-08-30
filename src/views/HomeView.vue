@@ -5,8 +5,8 @@
 			:href="`https://${channel.subdomain}.tube.yt`"
 			v-for="channel in availableChannels" :key="channel.id"
 		>
-			<h1>{{ channel.channelName }}</h1>
-			<img v-if="channel.thumbnails.high.url" :src="channel.thumbnails.high.url" alt="Channel logo" />
+			<h1>{{ channel?.channelName }}</h1>
+			<img v-if="channel?.thumbnails?.high?.url" :src="channel.thumbnails.high.url" alt="Channel logo" />
 		</a>
 	</div>
 </template>
