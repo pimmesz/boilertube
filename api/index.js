@@ -92,7 +92,9 @@ function sanitizeFilename(filename) {
 	return filename
 			.normalize("NFD") // Normalize to decomposed form
 			.replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
-			.replace(/[^a-zA-Z0-9]/g, ""); // Remove non-alphanumeric characters
+			.replace(/[^a-zA-Z0-9]/g, "") // Remove non-alphanumeric characters
+			.replaceAll(' ', '') // Remove spaces
+			.toLocaleLowerCase(); // Convert to lowercase
 }
 
 async function getVideoDetails(videoId) {
@@ -105,7 +107,7 @@ async function getVideoDetails(videoId) {
 
 		return {
 			id: videoDetails.id,
-			channel: videoDetails.snippet.channelTitle.replaceAll(' ', '').toLocaleLowerCase(),
+			channel: sanitizeFilename(videoDetails.snippet.channelTitle),
 			publishedAt: videoDetails.snippet.publishedAt,
 			title: videoDetails.snippet.title,
 			thumbnails: JSON.stringify(videoDetails.snippet.thumbnails),
@@ -228,7 +230,7 @@ async function addChannelToDatabase(channelId) {
 		create: {
 			id: channelId,
 			channelName: channelInfo.snippet.title,
-			subdomain: sanitizeFilename(channelInfo.snippet.title.replaceAll(' ', '').toLocaleLowerCase()),
+			subdomain: sanitizeFilename(channelInfo.snippet.title),
 			updatedAt: new Date(Date.now()).toISOString(),
 			thumbnails: JSON.stringify(channelInfo.snippet.thumbnails),
 			subscriberCount: Number(channelInfo.statistics.subscriberCount),

@@ -193,7 +193,7 @@ export default {
 		},
     getSubdomain(): string {
 			if (import.meta.env.VITE_ENVIRONMENT === "local") {
-				return 'boilerroom'
+				return 'horberlin'
 			}
       const host = window.location.hostname;
       const parts = host.split(".");

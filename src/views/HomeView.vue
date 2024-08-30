@@ -5,8 +5,7 @@
 			:href="`https://${channel.subdomain}.tube.yt`"
 			v-for="channel in availableChannels" :key="channel.id"
 		>
-			<h1>{{ channel.channelName }}</h1>
-			<img v-if="channel.thumbnails?.medium?.url" :src="channel.thumbnails?.medium?.url" alt="Channel logo" />
+			<v-img :height="100" :width="100" aspect-ratio="1/1" cover v-if="channel.thumbnails?.medium?.url" :src="channel.thumbnails?.medium?.url" alt="Channel logo" />
 		</a>
 	</div>
 </template>
@@ -59,20 +58,15 @@ export default {
 	}
 
 	.channel-list__item {
-		display: flex;
-		justify-content: center;
 		align-items: center;
-		padding: 10px;
+		display: flex;
+		flex-direction: column;
 		margin: 10px;
 		border: 1px solid #000;
 		text-align: center;
 		text-decoration: none;
 		color: #000;
-	}
-	
-	.channel-list__item img {
-		display: block;
 		height: 100px;
-		margin-left: 20px;
+		width: 100px
 	}
 </style>
