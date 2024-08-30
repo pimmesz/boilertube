@@ -256,8 +256,8 @@ export default {
 <style scoped>
 .video-filter {
 	@media only screen and (min-width: 600px) {
-		position: fixed;
-		top: 40%;
+		/* position: fixed;
+		top: 40%; */
 	}
 }
 
