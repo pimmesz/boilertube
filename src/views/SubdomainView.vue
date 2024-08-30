@@ -139,6 +139,7 @@ export default {
 	},
 	created() {
 		this.subdomain = this.getSubdomain();
+		console.log('SUBDOMAIN', this.subdomain)
 		this.fetchVideos({ days: 0, weeks: 0, months: 1 });
 	},
 	watch: {

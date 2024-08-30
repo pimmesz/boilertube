@@ -21,7 +21,7 @@ app.use(express.static(__dirname + "./../dist"));
 app.use(bodyParser.json());
 app.use(cors());
 app.use((req, res, next) => {
-	const subdomain = getSubdomain(req.headers.origin);
+	const subdomain = getSubdomain(req.host);
 	req.subdomain = subdomain;
 	next();
 });
@@ -50,12 +50,25 @@ app.get("/videos", async (req, res, next) => {
 	}
 });
 
+app.get("/available-channels", async (req, res, next) => {
+	const channels = await prisma.channels.findMany();
+	return res.send(
+		JSON.stringify({
+			channels,
+		})
+	);
+});
+
 app.get("/start-fill-database", async (req, res, next) => {
 	console.log("Start filling database");
-	// await getVideos();
-	console.log(req.subdomain)
+	const channelId = req.query.channelid ?? '';
+	if (!channelId) {
+		res.send("<h1>Please provide a channelId</h1>");
+		return;
+	}
 
-	res.send("Fill this database to the brim!!");
+	await createOrUpdateVideosFromChannel(channelId);
+	res.send(`Fill the ${channelId} database to the brim!!`);
 });
 
 // Functions
@@ -81,15 +94,14 @@ async function getAllVideosBetweenDates(
 }
 
 function getSubdomain(url) {
-	let urlObj = new URL(url);
-	let hostname = urlObj.hostname;
+	// Define the regex pattern
+	const pattern = /(?:https:\/\/)?([^.]+)/;
 	
-	let hostnameParts = hostname.split('.');
-	if (hostnameParts.length > 2) {
-			return hostnameParts[0]; // Return the first part, which is the subdomain
-	} else {
-			return null; // No subdomain present
-	}
+	// Apply the regex pattern to the input URL or string
+	const match = url.match(pattern);
+	
+	// If a match is found, return the captured group, else return null
+	return match ? match[1] : null;
 }
 
 async function getVideoDetails(videoId) {
@@ -114,10 +126,23 @@ async function getVideoDetails(videoId) {
 	}
 }
 
-function getCountYoutubeVideos() {
+async function refreshOldestChannelData() {
+	const oldestChannel = await prisma.channels.findFirst({
+		orderBy: {
+			updatedAt: "asc",
+		},
+	});
+
+	if (oldestChannel) {
+		console.log(`Refresh ${oldestChannel.channelName} channel data`)
+		await createOrUpdateVideosFromChannel(oldestChannel.id);
+	}
+}
+
+function getCountYoutubeVideos(channelId) {
 	return axios.get(
 		"https://www.googleapis.com/youtube/v3/playlistItems?playlistId=" +
-			process.env.YOUTUBE_CHANNEL_ID +
+			channelId +
 			"&key=" +
 			process.env.YOUTUBE_API_KEY
 	);
@@ -154,11 +179,11 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 		? "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&pageToken=" +
 		  pageToken +
 		  "&playlistId=" +
-		  process.env.YOUTUBE_CHANNEL_ID +
+		  channelId +
 		  "&key=" +
 		  process.env.YOUTUBE_API_KEY
 		: "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=" +
-		  process.env.YOUTUBE_CHANNEL_ID +
+		  channelId +
 		  "&key=" +
 		  process.env.YOUTUBE_API_KEY;
 
@@ -193,20 +218,68 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 		});
 }
 
-// Start the app
-async function getVideos() {
-	// Get count of Youtube videos from their API
-	const countYoutubeVideosResponse = await getCountYoutubeVideos();
-	const countYoutubeVideos = Number(
-		countYoutubeVideosResponse?.data?.pageInfo?.totalResults
+async function getChannelInfo(channelId) {
+	const channelInfo = await axios.get(
+		`https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,statistics&id=${channelId}&key=${process.env.YOUTUBE_API_KEY}`
 	);
 
-	// Get count of saved videos in database
-	const countSavedVideos = await prisma.video.count();
+	return channelInfo.data.items[0].snippet;
+}
+
+async function addChannelToDatabase(channelId) {
+	// Check if channel exists in database
+	const channel = await prisma.channels.findFirst({
+		where: {
+			id: channelId,
+		},
+	});
+
+	// If channel does not exist, get channel info from Youtube API
+	const channelInfo = await getChannelInfo(channelId);
+	if (!channel) {
+		await prisma.channels.create({
+			data: {
+				id: channelId,
+				channelName: channelInfo.title,
+				subdomain: channelInfo.title.replaceAll(' ', '').toLocaleLowerCase(),
+				updatedAt: new Date(Date.now()).toISOString(),
+			},
+		});
+	}
+}
+
+async function resetChannelUpdatedAt(channelId) {
+	await prisma.channels.update({
+		where: {
+			id: channelId,
+		},
+		data: {
+			updatedAt: new Date(Date.now()).toISOString(),
+		},
+	});
+}
+
+async function checkIfVideosAreOutdated(channelId) {
+		// Get count of Youtube videos from their API
+		const countYoutubeVideosResponse = await getCountYoutubeVideos(channelId);
+		const countYoutubeVideos = Number(
+			countYoutubeVideosResponse?.data?.pageInfo?.totalResults
+		);
+	
+		// Get count of saved videos in database
+		const countSavedVideos = await prisma.video.count();
+		return countSavedVideos < countYoutubeVideos
+}
+
+async function createOrUpdateVideosFromChannel(channelId) {
+	await addChannelToDatabase(channelId);
+
+	const areVideosOutdated = await checkIfVideosAreOutdated(channelId);
 
 	// If there are more videos on Youtube than in database, get new videos
-	if (countSavedVideos < countYoutubeVideos) {
-		getVideoInfoPerYoutubePage();
+	if (areVideosOutdated) {
+		getVideoInfoPerYoutubePage(channelId);
+		resetChannelUpdatedAt(channelId);
 	} else {
 		console.log("No new videos to add to database");
 	}
@@ -217,9 +290,9 @@ const server = http.createServer(app);
 server.listen(port, async () => {
 	console.log(`App running on port: ${port}`);
 	cron.schedule("0 0 0 * * *", async () => {
+		await refreshOldestChannelData();
 		console.log(
-			"Run getVideos at " + moment().format("MMMM Do YYYY, h:mm:ss a")
+			"Run refreshOldestChannelData at " + moment().format("MMMM Do YYYY, h:mm:ss a")
 		);
-		await getVideos();
 	});
 });

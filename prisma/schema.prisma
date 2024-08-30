@@ -8,10 +8,11 @@ datasource db {
   directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
 }
 
-model Subdomains {
+model Channels {
   id             String @id
-  channelId      String @default("no_value")
+  channelName    String @default("no_value")
   subdomain      String @default("no_value")
+  updatedAt      String @default("no_value")
 }
 
 model Video {
