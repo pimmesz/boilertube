@@ -3,7 +3,6 @@
 		<a
 			class="channel-list__item"
 			:href="`https://${channel.subdomain}.tube.yt`"
-			target="_blank"
 			v-for="channel in availableChannels" :key="channel.id"
 		>
 			{{ channel.channelName }}
