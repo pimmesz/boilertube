@@ -139,7 +139,6 @@ export default {
 	},
 	created() {
 		this.subdomain = this.getSubdomain();
-		console.log('SUBDOMAIN', this.subdomain)
 		this.fetchVideos({ days: 0, weeks: 0, months: 1 });
 	},
 	watch: {
@@ -193,7 +192,7 @@ export default {
 		},
     getSubdomain(): string {
 			if (import.meta.env.VITE_ENVIRONMENT === "local") {
-				return 'horberlin'
+				return 'boilerroom'
 			}
       const host = window.location.hostname;
       const parts = host.split(".");
@@ -260,12 +259,19 @@ export default {
 		position: sticky;
 		top: 76px;
 		height: 90vh;
-		overflow: hidden;
+		overflow-y: scroll;
 	}
 	
 	.video-filter {
 		position: fixed;
 		top: 40%;
+	}
+}
+
+@media only screen and (max-width: 599px) {
+	.infinite-scroll {
+		height: 60vh;
+		overflow: hidden
 	}
 }
 
