@@ -13,7 +13,15 @@ function hasSubdomain() {
 }
 
 // Determine the appropriate component based on the subdomain
-const homeComponent = import.meta.env.VITE_ENVIRONMENT === 'local' || hasSubdomain() ? SubdomainView : HomeView;
+let homeComponent;
+if (import.meta.env.VITE_ENVIRONMENT === 'local') {
+	homeComponent = SubdomainView;
+} else if (window.location.hostname.includes('www')) {
+	homeComponent = HomeView;
+}
+else {
+	homeComponent = hasSubdomain() ? SubdomainView : HomeView;
+}
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.BASE_URL),

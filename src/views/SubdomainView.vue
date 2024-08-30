@@ -58,7 +58,7 @@
 				offset-xl="2"
 				class="has-margin-bottom-16"
 			>
-				<div class="infinite-scroll">
+				<div class="infinite-scroll" v-if="videos?.length > 0">
 					<div :class="videos?.length > 3 ? 'video-list' : ''" v-if="!videosAreLoading">
 						<v-virtual-scroll
 							:height="1500"
@@ -88,6 +88,9 @@
 							style="position: absolute; top: 50%; left: 50%;"
 							v-else
 					></v-progress-circular>
+				</div>
+				<div v-else>
+					<h1>No videos for {{ subdomain }} yet...</h1>
 				</div>
 			</v-col>
 		</v-row>
@@ -189,7 +192,7 @@ export default {
 		},
     getSubdomain(): string {
 			if (import.meta.env.VITE_ENVIRONMENT === "local") {
-				return 'xxx'
+				return 'boilerroom'
 			}
       const host = window.location.hostname;
       const parts = host.split(".");
