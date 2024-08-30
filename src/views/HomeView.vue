@@ -38,7 +38,9 @@ export default {
 					this.availableChannels  = response.data.channels.map((channel) => {
 						channel.thumbnails = channel.thumbnails !== 'no_value' ? JSON.parse(channel.thumbnails) : null;
 						return channel;
-					});
+					}).sort((a, b) => b.subscriberCount - a.subscriberCount);
+
+					console.log(this.availableChannels)
 				})
 				.catch((error) => {
 					console.log(error);
