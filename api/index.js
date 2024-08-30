@@ -20,12 +20,6 @@ const port = process.env.PORT || 3003;
 app.use(express.static(__dirname + "./../dist"));
 app.use(bodyParser.json());
 app.use(cors());
-app.use((req, res, next) => {
-	console.log('req.hostname', req.hostname)
-	const subdomain = getSubdomain(req.hostname);
-	req.subdomain = subdomain;
-	next();
-});
 
 dotenv.config();
 
@@ -99,17 +93,6 @@ function sanitizeFilename(filename) {
 			.normalize("NFD") // Normalize to decomposed form
 			.replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
 			.replace(/[^a-zA-Z0-9]/g, ""); // Remove non-alphanumeric characters
-}
-
-function getSubdomain(url) {
-	// Define the regex pattern
-	const pattern = /(?:https:\/\/)?([^.]+)/;
-	
-	// Apply the regex pattern to the input URL or string
-	const match = url.match(pattern);
-	
-	// If a match is found, return the captured group, else return null
-	return match ? match[1] : null;
 }
 
 async function getVideoDetails(videoId) {

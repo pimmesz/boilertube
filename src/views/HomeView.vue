@@ -37,7 +37,7 @@ export default {
 				.then((response) => {
 					console.log('RECEIVED', response.data)
 					this.availableChannels  = response.data.channels.map((channel) => {
-						channel.thumbnails = JSON.parse(channel.thumbnails);
+						channel.thumbnails = JSON.parse(channel.thumbnails) ?? null;
 						return channel;
 					});
 				})
