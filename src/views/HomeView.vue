@@ -6,7 +6,7 @@
 			v-for="channel in availableChannels" :key="channel.id"
 		>
 			<h1>{{ channel?.channelName }}</h1>
-			<img v-if="channel?.thumbnails?.high?.url" :src="channel.thumbnails.high.url" alt="Channel logo" />
+			<img v-if="channel?.thumbnails?.medium?.url" :src="channel?.thumbnails?.medium?.url" alt="Channel logo" />
 		</a>
 	</div>
 </template>
@@ -37,7 +37,7 @@ export default {
 				.then((response) => {
 					console.log('RECEIVED', response.data)
 					this.availableChannels  = response.data.channels.map((channel) => {
-						channel.thumbnails = JSON.parse(channel.thumbnails) ?? null;
+						channel.thumbnails = channel.thumbnails !== 'no_value' ? JSON.parse(channel.thumbnails) : null;
 						return channel;
 					});
 				})
