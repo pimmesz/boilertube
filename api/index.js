@@ -21,7 +21,8 @@ app.use(express.static(__dirname + "./../dist"));
 app.use(bodyParser.json());
 app.use(cors());
 app.use((req, res, next) => {
-	const subdomain = getSubdomain(req.host);
+	console.log('req.hostname', req.hostname)
+	const subdomain = getSubdomain(req.hostname);
 	req.subdomain = subdomain;
 	next();
 });
@@ -93,6 +94,13 @@ async function getAllVideosBetweenDates(
 		.filter((video) => Number(video.viewCount) !== 0);
 }
 
+function sanitizeFilename(filename) {
+	return filename
+			.normalize("NFD") // Normalize to decomposed form
+			.replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
+			.replace(/[^a-zA-Z0-9]/g, ""); // Remove non-alphanumeric characters
+}
+
 function getSubdomain(url) {
 	// Define the regex pattern
 	const pattern = /(?:https:\/\/)?([^.]+)/;
@@ -107,7 +115,7 @@ function getSubdomain(url) {
 async function getVideoDetails(videoId) {
 	try {
 		const response = await axios.get(
-			`https://youtube.googleapis.com/youtube/v3/videos?part=statistics&part=snippet&id=${videoId}&key=${process.env.YOUTUBE_API_KEY}`
+			`https://www.googleapis.com/youtube/v3/videos?part=statistics&part=snippet&id=${videoId}&key=${process.env.YOUTUBE_API_KEY}`
 		);
 
 		const videoDetails = response.data.items[0];
@@ -119,7 +127,7 @@ async function getVideoDetails(videoId) {
 			publishedAt: videoDetails.snippet.publishedAt,
 			title: videoDetails.snippet.title,
 			thumbnails: JSON.stringify(videoDetails.snippet.thumbnails),
-			viewCount: videoDetails.statistics.viewCount,
+			viewCount: Number(videoDetails.statistics.viewCount),
 		};
 	} catch (error) {
 		console.log(error);
@@ -139,16 +147,7 @@ async function refreshOldestChannelData() {
 	}
 }
 
-function getCountYoutubeVideos(channelId) {
-	return axios.get(
-		"https://www.googleapis.com/youtube/v3/playlistItems?playlistId=" +
-			channelId +
-			"&key=" +
-			process.env.YOUTUBE_API_KEY
-	);
-}
-
-async function saveOrUpdateVideosWithDetails(video) {
+async function upsertVideosWithDetails(video) {
 	try {
 		await prisma.video.upsert({
 			where: {
@@ -164,11 +163,11 @@ async function saveOrUpdateVideosWithDetails(video) {
 			},
 		});
 	} catch (error) {
-		console.log("saveOrUpdateVideosWithDetails failed", video, error);
+		console.log("upsertVideosWithDetails failed", video, error);
 	}
 }
 
-function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
+function getVideoInfoPerYoutubePage(uploadsPlaylistId, pageToken = "", iteration = 0) {
 	console.log('getVideoInfoPerYoutubePage')
 	// If pageToken is provided, use it to get the next page of videos
 	// Otherwise, get the first page of videos
@@ -179,11 +178,11 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 		? "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&pageToken=" +
 		  pageToken +
 		  "&playlistId=" +
-		  channelId +
+		  uploadsPlaylistId +
 		  "&key=" +
 		  process.env.YOUTUBE_API_KEY
 		: "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=" +
-		  channelId +
+			uploadsPlaylistId +
 		  "&key=" +
 		  process.env.YOUTUBE_API_KEY;
 
@@ -199,7 +198,7 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 					);
 
 					if (videoDetails && videoDetails.viewCount) {
-						await saveOrUpdateVideosWithDetails(videoDetails);
+						await upsertVideosWithDetails(videoDetails);
 					}
 
 					return;
@@ -210,7 +209,7 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 				iteration++;
 				console.log("iteration - ", iteration);
 				console.log("videos in database - ", await prisma.video.count());
-				getVideoInfoPerYoutubePage(nextPageToken, iteration);
+				getVideoInfoPerYoutubePage(uploadsPlaylistId, nextPageToken, iteration);
 			}
 		})
 		.catch(function (error) {
@@ -220,10 +219,10 @@ function getVideoInfoPerYoutubePage(pageToken = "", iteration = 0) {
 
 async function getChannelInfo(channelId) {
 	const channelInfo = await axios.get(
-		`https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,statistics&id=${channelId}&key=${process.env.YOUTUBE_API_KEY}`
+		`https://www.googleapis.com/youtube/v3/channels?part=snippet%2CcontentDetails%2Cstatistics&id=${channelId}&key=${process.env.YOUTUBE_API_KEY}`
 	);
 
-	return channelInfo.data.items[0].snippet;
+	return channelInfo.data.items[0];
 }
 
 async function addChannelToDatabase(channelId) {
@@ -236,19 +235,30 @@ async function addChannelToDatabase(channelId) {
 
 	// If channel does not exist, get channel info from Youtube API
 	const channelInfo = await getChannelInfo(channelId);
-	if (!channel) {
-		await prisma.channels.create({
-			data: {
-				id: channelId,
-				channelName: channelInfo.title,
-				subdomain: channelInfo.title.replaceAll(' ', '').toLocaleLowerCase(),
-				updatedAt: new Date(Date.now()).toISOString(),
-			},
-		});
-	}
+	await prisma.channels.upsert({
+		where: {
+			id: channelId,
+		},
+		update: {
+			thumbnail: channelInfo.snippet.thumbnails.high.url,
+			subscriberCount: Number(channelInfo.statistics.subscriberCount),
+			viewCount: Number(channelInfo.statistics.viewCount),
+		},
+		create: {
+			id: channelId,
+			channelName: channelInfo.snippet.title,
+			subdomain: sanitizeFilename(channelInfo.snippet.title.replaceAll(' ', '').toLocaleLowerCase()),
+			updatedAt: new Date(Date.now()).toISOString(),
+			thumbnail: channelInfo.snippet.thumbnails.high.url,
+			subscriberCount: Number(channelInfo.statistics.subscriberCount),
+			viewCount: Number(channelInfo.statistics.viewCount),
+		}
+	});
+
+	return channelInfo;
 }
 
-async function resetChannelUpdatedAt(channelId) {
+async function setChannelUpdatedAt(channelId) {
 	await prisma.channels.update({
 		where: {
 			id: channelId,
@@ -259,27 +269,33 @@ async function resetChannelUpdatedAt(channelId) {
 	});
 }
 
-async function checkIfVideosAreOutdated(channelId) {
+async function checkIfVideosAreOutdated(channelInfo) {
+	try {
 		// Get count of Youtube videos from their API
-		const countYoutubeVideosResponse = await getCountYoutubeVideos(channelId);
-		const countYoutubeVideos = Number(
-			countYoutubeVideosResponse?.data?.pageInfo?.totalResults
-		);
+		const countYoutubeVideos = Number(channelInfo.statistics.videoCount)
 	
 		// Get count of saved videos in database
-		const countSavedVideos = await prisma.video.count();
-		return countSavedVideos < countYoutubeVideos
+		const countSavedVideos = await prisma.video.count({
+			where: {
+				id: channelInfo.id
+			},
+		});
+
+		// If there are more videos on Youtube than in database, get new videos
+		return countSavedVideos < countYoutubeVideos	
+	} catch (error) {
+		console.log('Doesnt work', error)
+	}
 }
 
 async function createOrUpdateVideosFromChannel(channelId) {
-	await addChannelToDatabase(channelId);
-
-	const areVideosOutdated = await checkIfVideosAreOutdated(channelId);
-
+	const channelInfo = await addChannelToDatabase(channelId);
+	const areVideosOutdated = await checkIfVideosAreOutdated(channelInfo);
+	
 	// If there are more videos on Youtube than in database, get new videos
 	if (areVideosOutdated) {
-		getVideoInfoPerYoutubePage(channelId);
-		resetChannelUpdatedAt(channelId);
+		setChannelUpdatedAt(channelId);
+		getVideoInfoPerYoutubePage(channelInfo.contentDetails.relatedPlaylists.uploads);
 	} else {
 		console.log("No new videos to add to database");
 	}

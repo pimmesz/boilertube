@@ -9,10 +9,13 @@ datasource db {
 }
 
 model Channels {
-  id             String @id
-  channelName    String @default("no_value")
-  subdomain      String @default("no_value")
-  updatedAt      String @default("no_value")
+  id              String @id
+  channelName     String @default("no_value")
+  subdomain       String @default("no_value")
+  updatedAt       String @default("no_value")
+  thumbnail       String @default("no_value")
+  subscriberCount Int @default(0)
+  viewCount       Int @default(0)
 }
 
 model Video {
@@ -21,5 +24,5 @@ model Video {
   publishedAt    String @default("no_value")
   title          String @default("no_value")
   thumbnails     String @default("no_value")
-  viewCount      String @default("no_value")
+  viewCount      Int @default(0)
 }

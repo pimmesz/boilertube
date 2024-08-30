@@ -89,7 +89,7 @@
 							v-else
 					></v-progress-circular>
 				</div>
-				<div v-else>
+				<div v-if="videos?.length < 1 && !videosAreLoading">
 					<h1>No videos for {{ subdomain }} yet...</h1>
 				</div>
 			</v-col>
