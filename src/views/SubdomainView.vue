@@ -5,11 +5,11 @@
 				cols="12"
 				sm="5"
 				offset-sm="1"
-				md="3"
+				md="4"
 				offset-md="1"
-				lg="2"
+				lg="3"
 				offset-lg="1"
-				xl="2"
+				xl="3"
 				offset-xl="1"
 			>
 				<div class="video-filter">
@@ -51,9 +51,9 @@
 				sm="4"
 				offset-sm="2"
 				md="5"
-				offset-md="3"
+				offset-md="2"
 				lg="5"
-				offset-lg="3"
+				offset-lg="2"
 				xl="5"
 				offset-xl="2"
 				class="has-margin-bottom-16"
@@ -257,14 +257,14 @@ export default {
 <style scoped>
 .video-filter {
 	@media only screen and (min-width: 600px) {
-		/* position: fixed;
-		top: 40%; */
+		position: fixed;
+		top: 40%;
 	}
 }
 
 .infinite-scroll {
 	@media only screen and (min-width: 600px) {
-		position: fixed;
+		position: sticky;
 		top: 76px;
 		height: 90vh;
 		overflow: hidden;
