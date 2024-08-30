@@ -13,7 +13,7 @@ model Channels {
   channelName     String @default("no_value")
   subdomain       String @default("no_value")
   updatedAt       String @default("no_value")
-  thumbnail       String @default("no_value")
+  thumbnails      String @default("no_value")
   subscriberCount Int @default(0)
   viewCount       Int @default(0)
 }

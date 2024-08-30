@@ -123,7 +123,6 @@ async function getVideoDetails(videoId) {
 		return {
 			id: videoDetails.id,
 			channel: videoDetails.snippet.channelTitle.replaceAll(' ', '').toLocaleLowerCase(),
-			updatedAt: new Date(Date.now()).toISOString(),
 			publishedAt: videoDetails.snippet.publishedAt,
 			title: videoDetails.snippet.title,
 			thumbnails: JSON.stringify(videoDetails.snippet.thumbnails),
@@ -155,7 +154,7 @@ async function upsertVideosWithDetails(video) {
 			},
 			update: {
 				viewCount: video.viewCount,
-				updatedAt: video.updatedAt,
+				thumbnails: video.thumbnails,
 				channel: video.channel,
 			},
 			create: {
@@ -208,7 +207,6 @@ function getVideoInfoPerYoutubePage(uploadsPlaylistId, pageToken = "", iteration
 			if (nextPageToken) {
 				iteration++;
 				console.log("iteration - ", iteration);
-				console.log("videos in database - ", await prisma.video.count());
 				getVideoInfoPerYoutubePage(uploadsPlaylistId, nextPageToken, iteration);
 			}
 		})
@@ -240,7 +238,7 @@ async function addChannelToDatabase(channelId) {
 			id: channelId,
 		},
 		update: {
-			thumbnail: channelInfo.snippet.thumbnails.high.url,
+			thumbnails: JSON.stringify(channelInfo.snippet.thumbnails),
 			subscriberCount: Number(channelInfo.statistics.subscriberCount),
 			viewCount: Number(channelInfo.statistics.viewCount),
 		},
@@ -249,7 +247,7 @@ async function addChannelToDatabase(channelId) {
 			channelName: channelInfo.snippet.title,
 			subdomain: sanitizeFilename(channelInfo.snippet.title.replaceAll(' ', '').toLocaleLowerCase()),
 			updatedAt: new Date(Date.now()).toISOString(),
-			thumbnail: channelInfo.snippet.thumbnails.high.url,
+			thumbnails: JSON.stringify(channelInfo.snippet.thumbnails),
 			subscriberCount: Number(channelInfo.statistics.subscriberCount),
 			viewCount: Number(channelInfo.statistics.viewCount),
 		}

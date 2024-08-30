@@ -6,7 +6,7 @@
 			v-for="channel in availableChannels" :key="channel.id"
 		>
 			<h1>{{ channel.channelName }}</h1>
-			<img v-if="channel.thumbnail" :src="channel.thumbnail" alt="Channel logo" />
+			<img v-if="channel.thumbnails.high.url" :src="channel.thumbnails.high.url" alt="Channel logo" />
 		</a>
 	</div>
 </template>
