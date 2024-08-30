@@ -255,21 +255,20 @@ export default {
 </script>
 
 <style scoped>
-.infinite-scroll {
-	@media only screen and (min-width: 601px) {
+@media only screen and (min-width: 600px) {
+	.infinite-scroll {
 		position: sticky;
 		top: 76px;
 		height: 90vh;
 		overflow: hidden;
 	}
-}
-
-.video-filter {
-	@media only screen and (min-width: 600px) {
+	
+	.video-filter {
 		position: fixed;
 		top: 40%;
 	}
 }
+
 
 .video-list::after {
   content: "";
