@@ -36,7 +36,10 @@ export default {
 				.get(`${baseUrl}/available-channels`)
 				.then((response) => {
 					console.log('RECEIVED', response.data)
-					this.availableChannels  = response.data.channels
+					this.availableChannels  = response.data.channels.map((channel) => {
+						channel.thumbnails = JSON.parse(channel.thumbnails);
+						return channel;
+					});
 				})
 				.catch((error) => {
 					console.log(error);
