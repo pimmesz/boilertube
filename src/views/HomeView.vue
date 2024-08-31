@@ -1,8 +1,10 @@
 <template>
 	<div class="channel-list">
+		<v-progress-circular v-if="isLoading" indeterminate color="white"></v-progress-circular>
 		<a
 			class="channel-list__item"
 			:href="`https://${channel.subdomain}.tube.yt`"
+			v-else
 			v-for="channel in availableChannels" :key="channel.id"
 		>
 			<v-img :height="100" :width="100" aspect-ratio="1/1" cover v-if="channel.thumbnails?.medium?.url" :src="channel.thumbnails?.medium?.url" alt="Channel logo" />
@@ -17,9 +19,11 @@ import axios from "axios";
 export default {
 	setup() {
 		const availableChannels = ref([]);
+		const isLoading = ref(true);
 
 		return {
-			availableChannels
+			availableChannels,
+			isLoading
 		};
 	},
 	created() {
@@ -40,10 +44,11 @@ export default {
 						return channel;
 					}).sort((a, b) => b.subscriberCount - a.subscriberCount);
 
-					console.log(this.availableChannels)
+					this.isLoading = false;
 				})
 				.catch((error) => {
 					console.log(error);
+					this.isLoading = false;
 				});
 		},
 	},
@@ -52,29 +57,19 @@ export default {
 
 <style scoped>	
 	.channel-list {
-		position: absolute;
-    padding: 50px;
+		display: flex;
+    justify-content: center;
+    overflow-x: scroll;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    margin: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    width: 100%;
-	}
+    position: absolute;
+    width: 100vw;
+}
 
-	.channel-list__item {
-		align-items: center;
-		display: flex;
-		flex-direction: column;
-		margin: 10px;
-		border: 1px solid #000;
-		text-align: center;
-		text-decoration: none;
-		color: #000;
-		height: 100px;
-		width: 100px
-	}
+.channel-list__item {
+    margin: 10px;
+    border: 1px solid #000;
+    color: #000;
+}
 </style>
