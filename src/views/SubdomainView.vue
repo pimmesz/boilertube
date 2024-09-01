@@ -83,7 +83,7 @@
             </v-virtual-scroll>
           </div>
           <v-alert
-            v-else
+            v-if="videos.length < 0 && !videosAreLoading"
             type="info"
             prominent
             border="start"
