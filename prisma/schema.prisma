@@ -10,8 +10,8 @@ datasource db {
 
 model Channels {
   id              String @id
+  subdomain       String @unique
   channelName     String @default("no_value")
-  subdomain       String @default("no_value")
   updatedAt       String @default("no_value")
   thumbnails      String @default("no_value")
   subscriberCount Int @default(0)

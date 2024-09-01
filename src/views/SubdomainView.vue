@@ -1,336 +1,279 @@
 <template>
-	<v-container class="fill-height">
-		<v-row no-gutters>
-			<v-col
-				cols="12"
-				sm="5"
-				offset-sm="1"
-				md="4"
-				offset-md="1"
-				lg="3"
-				offset-lg="1"
-				xl="3"
-				offset-xl="1"
-			>
-				<div class="video-filter">
-					<h1>{{ subdomain }}</h1>
-					<p class="has-margin-bottom-16">
-						Most viewed {{ subdomain }} Youtube videos in:
-					</p>
-					<div class="selector-divider">
-						<v-number-input
-						v-model="customRangeNumberInput"
-						control-variant="stacked"
-						reverse
-						:max="customRangeMax"
-						:min="customRangeMin"
-						inset
-					></v-number-input>
-						<v-select
-							label="Select"
-							v-model="customRangeDateInput"
-							:items="['Week', 'Month', 'Year']"
-							variant="outlined"
-							:item-title="customRangeDateInput"
-							:item-value="customRangeDateInput"
-						></v-select>
-					</div>
-					<v-btn
-						variant="outlined"
-						class="has-margin-bottom-16"
-						:block="isMobile"
-						@click="
-							videoFilterDate = { days: 0, weeks: 0, months: 999 }
-						"
-						>Most viewed videos ever
-					</v-btn>
-				</div>
-			</v-col>
-			<v-col
-				cols="12"
-				sm="4"
-				offset-sm="2"
-				md="5"
-				offset-md="2"
-				lg="5"
-				offset-lg="2"
-				xl="5"
-				offset-xl="2"
-				class="has-margin-bottom-16"
-			>
-				<div class="infinite-scroll" v-if="videos?.length > 0">
-					<div :class="videos?.length > 3 ? 'video-list' : ''" v-if="!videosAreLoading">
-						<v-virtual-scroll
-							:height="1500"
-							:items="videos"
-						>
-							<template v-slot:default="{ item }">
-								<a
-									:href="`https://www.youtube.com/watch?v=${item?.id}`"
-									target="_blank"
-									class="video-link"
-								>
-									<img
-										:src="item?.thumbnails.high.url"
-										alt=""
-										class="video-link__image"
-									/>
-									<div class="video-link__text">
-										<p>{{ getHumanReadableNumber(item?.viewCount) }} views</p>
-									</div>
-								</a>
-							</template>
-						</v-virtual-scroll>
-					</div>
-					<v-progress-circular
-							color="white"
-							indeterminate
-							style="position: absolute; top: 50%; left: 50%;"
-							v-else
-					></v-progress-circular>
-				</div>
-				<div v-if="videos?.length < 1 && !videosAreLoading">
-					<h1>No videos for {{ subdomain }} yet...</h1>
-				</div>
-			</v-col>
-		</v-row>
-	</v-container>
+  <v-container class="fill-height">
+    <v-row no-gutters>
+      <v-col cols="12" sm="5" md="4" lg="3" xl="3" offset-sm="1" offset-md="1" offset-lg="1" offset-xl="1">
+        <div class="video-filter">
+          <h1>{{ channel.channelName }}</h1>
+          <p class="mb-4 text-caption">Last updated: {{ formatDate(channel.updatedAt) }}</p>
+          <p class="mb-4">Most viewed {{ subdomain }} Youtube videos in:</p>
+          <v-row align="center" class="mb-4">
+            <v-col cols="5">
+              <v-number-input
+                v-model="customRangeNumberInput"
+                :max="customRangeMax"
+                :min="customRangeMin"
+								control-variant="stacked"
+                hide-details
+                density="compact"
+              ></v-number-input>
+            </v-col>
+            <v-col cols="7">
+              <v-select
+                v-model="customRangeDateInput"
+                :items="['Week', 'Month', 'Year']"
+                hide-details
+                density="compact"
+              ></v-select>
+            </v-col>
+          </v-row>
+          <v-btn
+            variant="outlined"
+            :block="isMobile"
+            @click="setAllTimeFilter"
+            class="mb-4"
+          >
+            Most viewed videos ever
+          </v-btn>
+        </div>
+      </v-col>
+      <v-col cols="12" sm="5" md="6" lg="7" xl="7" offset-sm="1" offset-md="1" offset-lg="1" offset-xl="1">
+        <v-progress-circular
+          v-if="videosAreLoading"
+          color="primary"
+          indeterminate
+          size="64"
+          class="ma-auto d-block"
+        ></v-progress-circular>
+        <template v-else>
+          <div v-if="videos.length > 0" class="infinite-scroll">
+            <v-virtual-scroll
+              :items="videos"
+              height="90vh"
+              item-height="200"
+            >
+              <template v-slot:default="{ item }">
+                <v-hover>
+                  <template v-slot:default="{ isHovering, props }">
+                    <v-card
+                      v-bind="props"
+                      :elevation="isHovering ? 8 : 2"
+											class="mb-4"
+                      :class="{ 'on-hover': isHovering }"
+											style="background-color: black;"
+                      @click="openVideo(item.id)"
+                    >
+                      <v-img
+                        :src="item.thumbnails.high.url"
+                        :aspect-ratio="16/9"
+                        cover
+                      >
+                        <div class="view-count">
+                          <v-icon icon="mdi-eye" size="small" color="white" class="mr-1"></v-icon>
+                          <span style="color: white;">{{ getHumanReadableNumber(item.viewCount) }}</span>
+                        </div>
+                      </v-img>
+                    </v-card>
+                  </template>
+                </v-hover>
+              </template>
+            </v-virtual-scroll>
+          </div>
+          <v-alert
+            v-else
+            type="info"
+            prominent
+            border="start"
+            class="mt-4"
+          >
+            No videos for {{ subdomain }} yet...
+          </v-alert>
+        </template>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
-<script lang="ts">
-import Spinner from "../components/Spinner.vue";
-import { ref } from "vue";
-import axios from "axios";
-import numeral from "numeral";
-import { useDisplay } from "vuetify";
-import Datepicker from "@vuepic/vue-datepicker";
-import "@vuepic/vue-datepicker/dist/main.css";
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue';
+import axios from 'axios';
+import numeral from 'numeral';
+import { useDisplay } from 'vuetify';
 
-export default {
-	components: {
-		Spinner,
-		Datepicker,
-	},
-	setup() {
-		const { width } = useDisplay();
-		const videos = ref({});
-		const customRangeDateInput = ref('Month');
-		const customRangeMax = ref(12);
-		const customRangeMin = ref(1);
-		const customRangeNumberInput = ref(1);
-		const isMobile = ref(width.value < 600);
-		const items = ref([]);
-		const subdomain = ref('');
-		const videoFilterDate = ref({ days: 0, weeks: 0, months: 1 });
-		const videosAreLoading = ref(false);
+const { width } = useDisplay();
+const videos = ref([]);
+const customRangeDateInput = ref('Month');
+const customRangeMax = ref(12);
+const customRangeMin = ref(1);
+const customRangeNumberInput = ref(1);
+const isMobile = computed(() => width.value < 600);
+const subdomain = ref('');
+const channel = ref({});
+const videoFilterDate = ref({ days: 0, weeks: 0, months: 1 });
+const videosAreLoading = ref(false);
 
-		return {
-			videos,
-			customRangeDateInput,
-			customRangeMax,
-			customRangeMin,
-			customRangeNumberInput,
-			isMobile,
-			items,
-			subdomain,
-			videoFilterDate,
-			videosAreLoading
-		};
-	},
-	created() {
-		this.subdomain = this.getSubdomain();
-		this.fetchVideos({ days: 0, weeks: 0, months: 1 });
-	},
-	watch: {
-		// whenever videoFilterDate changes, this function will run
-		videoFilterDate(newVideoFilterDate) {
-			this.fetchVideos(newVideoFilterDate);
-		},
-		// whenever customRangeDateInput changes, this function will run
-		customRangeDateInput(newCustomRangeDateInput) {
-			switch (newCustomRangeDateInput) {
-				case 'Week':
-					this.customRangeMax = 52;
-					this.customRangeMin = 1;
-					this.videoFilterDate = { days: 0, weeks: this.customRangeNumberInput, months: 0 }
-					break;
-				case 'Month':
-					this.customRangeMax = 12;
-					this.customRangeMin = 1;
-					this.videoFilterDate = { days: 0, weeks: 0, months: this.customRangeNumberInput }
-					break;
-				case 'Year':
-					this.customRangeMax = 10;
-					this.customRangeMin = 1;
-					this.videoFilterDate = { days: 0, weeks: 0, months: this.customRangeNumberInput * 12 }
-					break;
-			}
-
-			// If the input is greater than the max, set it to the max
-			if (this.customRangeNumberInput > this.customRangeMax) {
-				this.customRangeNumberInput = this.customRangeMax;
-			}
-		},
-		// whenever customRangeNumberInput changes, this function will run
-		customRangeNumberInput(newCustomRangeNumberInput) {
-			switch (this.customRangeDateInput) {
-				case 'Week':
-					this.videoFilterDate = { days: 0, weeks: newCustomRangeNumberInput, months: 0 }
-					break;
-				case 'Month':
-					this.videoFilterDate = { days: 0, weeks: 0, months: newCustomRangeNumberInput }
-					break;
-				case 'Year':
-					this.videoFilterDate = { days: 0, weeks: 0, months: newCustomRangeNumberInput * 12 }
-					break;
-			}
-		},
-	},
-	methods: {
-		getHumanReadableNumber(number: number) {
-			return numeral(number).format("0,0a");
-		},
-    getSubdomain(): string {
-			if (import.meta.env.VITE_ENVIRONMENT === "local") {
-				return 'boilerroom'
-			}
-      const host = window.location.hostname;
-      const parts = host.split(".");
-      if (parts.length > 2) {
-        return parts[0];
-      }
-      return '';
-    },
-		fetchVideos(
-			dateObject = { days: 0, weeks: 0, months: 0 }
-		) {
-			this.videosAreLoading = true;
-			let fromDate = new Date();
-			const { days, weeks, months } = dateObject;
-			// Per day
-			if (days && !weeks && !months) {
-				fromDate.setDate(fromDate.getDate() - days);
-				fromDate.toISOString();
-			}
-
-			// Per week
-			if (!days && weeks && !months) {
-				fromDate.setDate(fromDate.getDate() - weeks * 7);
-				fromDate.toISOString();
-			}
-
-			// Per month
-			if (!days && !weeks && months) {
-				fromDate.setMonth(fromDate.getMonth() - months);
-				fromDate.toISOString();
-			}
-
-			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
-				? "https://tube.yt"
-				: "http://localhost:3003";
-
-			axios
-				.get(`${baseUrl}/videos`, {
-					params: {
-						fromdate: fromDate,
-						channel: this.subdomain,
-					},
-				})
-				.then((response) => {
-					const data = response.data.fromDateVideos;
-					data.forEach(
-						(video: any) => (video.thumbnails = JSON.parse(video.thumbnails))
-					);
-					this.videos = data;
-					this.videosAreLoading = false;
-				})
-				.catch((error) => {
-					console.log(error);
-					this.videosAreLoading = false;
-				});
-		},
-	},
+const getHumanReadableNumber = (number: number) => {
+  return numeral(number).format('0.0a');
 };
+
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+const getSubdomain = (): string => {
+  if (import.meta.env.VITE_ENVIRONMENT === 'local') {
+    return 'boilerroom';
+  }
+  const host = window.location.hostname;
+  const parts = host.split('.');
+  return parts.length > 2 ? parts[0] : '';
+};
+
+const fetchChannel = async () => {
+  const baseUrl = import.meta.env.VITE_ENVIRONMENT === 'production'
+    ? 'https://tube.yt'
+    : 'http://localhost:3003';
+
+  try {
+    const response = await axios.get(`${baseUrl}/channels/${subdomain.value}`);
+    return response.data.channel;
+  } catch (error) {
+    console.error('Error fetching channel:', error.message);
+  }
+};
+
+const fetchVideos = async (dateObject = { days: 0, weeks: 0, months: 0 }) => {
+  videosAreLoading.value = true;
+  let fromDate = new Date();
+  const { days, weeks, months } = dateObject;
+
+  if (days && !weeks && !months) {
+    fromDate.setDate(fromDate.getDate() - days);
+  } else if (!days && weeks && !months) {
+    fromDate.setDate(fromDate.getDate() - weeks * 7);
+  } else if (!days && !weeks && months) {
+    fromDate.setMonth(fromDate.getMonth() - months);
+  }
+
+  const baseUrl = import.meta.env.VITE_ENVIRONMENT === 'production'
+    ? 'https://tube.yt'
+    : 'http://localhost:3003';
+
+  try {
+    const response = await axios.get(`${baseUrl}/videos`, {
+      params: {
+        fromdate: fromDate.toISOString(),
+        channel: subdomain.value,
+      },
+    });
+    const data = response.data.fromDateVideos;
+    videos.value = data.map((video: any) => ({
+      ...video,
+      thumbnails: JSON.parse(video.thumbnails),
+    }));
+  } catch (error) {
+    console.error('Error fetching videos:', error);
+  } finally {
+    videosAreLoading.value = false;
+  }
+};
+
+const setAllTimeFilter = () => {
+  videoFilterDate.value = { days: 0, weeks: 0, months: 999 };
+};
+
+const openVideo = (videoId: string) => {
+  window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
+};
+
+watch(videoFilterDate, (newValue) => {
+  fetchVideos(newValue);
+});
+
+watch(customRangeDateInput, (newValue) => {
+  switch (newValue) {
+    case 'Week':
+      customRangeMax.value = 52;
+      customRangeMin.value = 1;
+      videoFilterDate.value = { days: 0, weeks: customRangeNumberInput.value, months: 0 };
+      break;
+    case 'Month':
+      customRangeMax.value = 12;
+      customRangeMin.value = 1;
+      videoFilterDate.value = { days: 0, weeks: 0, months: customRangeNumberInput.value };
+      break;
+    case 'Year':
+      customRangeMax.value = 10;
+      customRangeMin.value = 1;
+      videoFilterDate.value = { days: 0, weeks: 0, months: customRangeNumberInput.value * 12 };
+      break;
+  }
+});
+
+watch(customRangeNumberInput, (newValue) => {
+  switch (customRangeDateInput.value) {
+    case 'Week':
+      videoFilterDate.value = { days: 0, weeks: newValue, months: 0 };
+      break;
+    case 'Month':
+      videoFilterDate.value = { days: 0, weeks: 0, months: newValue };
+      break;
+    case 'Year':
+      videoFilterDate.value = { days: 0, weeks: 0, months: newValue * 12 };
+      break;
+  }
+});
+
+onMounted(async () => {
+  subdomain.value = getSubdomain();
+  channel.value = await fetchChannel();
+	console.log(channel.value.subdomain,channel.value.id);
+  await fetchVideos({ days: 0, weeks: 0, months: 1 });
+});
 </script>
 
 <style scoped>
-@media only screen and (min-width: 600px) {
-	.infinite-scroll {
-		position: sticky;
-		top: 76px;
-		height: 90vh;
-		overflow-y: scroll;
-	}
-	
-	.video-filter {
-		position: fixed;
-		top: 40%;
-	}
+.infinite-scroll {
+  height: 90vh;
+  overflow-y: auto;
+  box-shadow: inset 0 -10px 10px -10px rgba(0,0,0,0.1);
+}
+
+.video-filter {
+  position: sticky;
+  top: 50%;
+	transform: translateY(-50%);
+}
+
+.v-card {
+  transition: all 0.3s ease-in-out;
+  transform: scale(1);
+}
+
+.on-hover {
+  box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.2);
+  transform: scale(1.02);
 }
 
 @media only screen and (max-width: 599px) {
-	.infinite-scroll {
-		height: 60vh;
-		overflow: hidden
-	}
+  .infinite-scroll {
+    height: 60vh;
+  }
 }
 
+.text-truncate {
+	white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-.video-list::after {
-  content: "";
+.view-count {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 20px; /* Adjust height based on your design */
-  pointer-events: none; /* Ensures the shadow doesn't block interaction with items */
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255,255,255, 0.8));
+  bottom: 8px;
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
 }
-
-.video-link {
-	color: white;
-	text-decoration: none;
-	position: relative;
-	display: block;
-	transform: scale(1);
-	transition: all 0.2s ease-in-out;
-}
-
-.video-link:hover {
-	transform: scale(1.01);
-	transition: all 0.2s ease-in-out;
-}
-
-.video-link__image {
-	transition: all 0.2s ease-in-out;
-	box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
-	width: 100%;
-}
-
-.video-link__image:hover {
-	transition: all 0.2s ease-in-out;
-	box-shadow: rgba(0, 0, 0, 0.6) 0px 5px 20px;
-}
-
-.video-link__text {
-	font-size: 1rem;
-	font-weight: 500;
-	margin-top: 0.5rem;
-	position: absolute;
-	top: 0;
-	left: 10px;
-}
-
-.selector-divider {
-	display: flex;
-	justify-content: space-between;
-	margin-top: 1rem;
-}
-
-/* Overrule Vuetify */
-.v-number-input {
-	max-width: 100px;
-	margin-right: 20px;
-}
-	
 </style>
