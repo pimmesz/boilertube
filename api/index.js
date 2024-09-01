@@ -6,8 +6,6 @@ import cors from "cors";
 import * as dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
-import * as cron from "node-cron";
-import moment from "moment";
 import packageJson from '../package.json' assert { type: 'json' };
 
 const prisma = new PrismaClient();
@@ -53,10 +51,7 @@ app.get("/channels/:subdomain", async (req, res) => {
 app.get("/start-fill-database", async (req, res) => {
 	const { channelid: channelId = '' } = req.query;
 	if (!channelId) {
-		await refreshOldestChannelData();
-		console.log(
-			"Run refreshOldestChannelData at " + moment().format("YYYY-MM-DD HH:mm:ss")
-		);
+		return res.status(400).send("<h1>Please provide a channelId</h1>");
 	}
 
 	console.log("Start filling database");
@@ -253,3 +248,9 @@ async function createOrUpdateVideosFromChannel(channelId) {
 		console.log("No new videos to add to database");
 	}
 }
+
+// Start the app
+const server = http.createServer(app);
+server.listen(port, () => {
+	console.log(`App running on port: ${port}`);
+});
