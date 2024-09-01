@@ -17,6 +17,10 @@
 					alt="Channel logo" 
 					@error="(event) => handleImageError(event, channel)"
 				/>
+				<div v-if="channel.subscriberCount" class="subscriber-count">
+					<v-icon icon="mdi-account-multiple" size="small" color="white" class="mr-1"></v-icon>
+					<p>{{ getHumanReadableNumber(channel.subscriberCount) }}</p>
+				</div>
 			</a>
 		</template>
 	</div>
@@ -25,6 +29,7 @@
 <script lang="ts">
 import { ref, onMounted } from "vue";
 import axios from "axios";
+import numeral from 'numeral';
 
 export default {
 	setup() {
@@ -52,6 +57,10 @@ export default {
 			}
 		};
 
+		const getHumanReadableNumber = (number: number) => {
+			return numeral(number).format('0.0a');
+		};
+
 		const handleImageError = (event, channel) => {
 			console.error('Error loading image for channel:', channel, 'Error:', event);
 			// channel.thumbnails.medium.url = 'path/to/default/image.jpg';
@@ -62,7 +71,8 @@ export default {
 		return {
 			availableChannels,
 			isLoading,
-			handleImageError
+			handleImageError,
+			getHumanReadableNumber
 		};
 	}
 };
@@ -82,7 +92,20 @@ export default {
 
 	.channel-list__item {
 		margin: 10px;
-		border: 1px solid #000;
 		color: #000;
+		text-align: center;
+		text-decoration: none;
 	}
+
+	.subscriber-count {
+		margin-top: 5px;
+		font-size: 14px;
+		color: #555;
+		display: flex;	
+		align-items: center;
+		justify-content: center;	
+		color: white;
+		text-decoration: none;
+	}
+
 </style>
