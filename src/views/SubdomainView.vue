@@ -72,7 +72,7 @@
                           <v-icon icon="mdi-eye" size="small" color="white" class="mr-1"></v-icon>
                           <span style="color: white;">{{ getHumanReadableNumber(item.viewCount) }}</span>
                         </div>
-                        <div class="video-title" style="color: white; position: absolute; bottom: 8px; left: 8px; background-color: rgba(0, 0, 0, 0.6); padding: 4px 8px; border-radius: 4px;">
+                        <div class="video-title">
                           <span>{{ item.title }}</span>
                         </div>
                       </v-img>
@@ -125,7 +125,7 @@ const formatDate = (date: string) => {
 
 const getSubdomain = (): string => {
   if (import.meta.env.VITE_ENVIRONMENT === 'local') {
-    return 'boilerroom';
+    return 'horberlin';
   }
   const host = window.location.hostname;
   const parts = host.split('.');
@@ -279,5 +279,19 @@ onMounted(async () => {
   border-radius: 4px;
   display: flex;
   align-items: center;
+}
+
+.video-title {
+	color: white;
+	position: absolute;
+	bottom: 8px;
+	left: 8px;
+	background-color: rgba(0, 0, 0, 0.6);
+	padding: 4px 8px;
+	border-radius: 4px;
+	max-width: 70%;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 </style>
