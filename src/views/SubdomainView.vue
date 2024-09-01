@@ -4,7 +4,8 @@
       <v-col cols="12" sm="5" md="4" lg="3" xl="3" offset-sm="1" offset-md="1" offset-lg="1" offset-xl="1">
         <div class="video-filter">
           <h1>{{ channel.channelName }}</h1>
-          <p class="mb-4 text-caption">Last updated: {{ formatDate(channel.updatedAt) }}</p>
+          <p class="text-caption">Last updated: {{ formatDate(channel.updatedAt) }}</p>
+					<p class="mb-4 text-caption">Number of videos: {{ videos.length }}</p>
           <p class="mb-4">Most viewed {{ subdomain }} Youtube videos in:</p>
           <v-row align="center" class="mb-4">
             <v-col cols="5">
