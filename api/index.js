@@ -2,7 +2,6 @@ import express from "express";
 import http from "http";
 import axios from "axios";
 import path from "path";
-import bodyParser from "body-parser";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import { fileURLToPath } from "url";
@@ -17,7 +16,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3003;
 
-app.use(express.static(path.join(__dirname, "..", "dist")));
 app.use(express.json());
 app.use(cors());
 
@@ -55,7 +53,10 @@ app.get("/channels/:subdomain", async (req, res) => {
 app.get("/start-fill-database", async (req, res) => {
 	const { channelid: channelId = '' } = req.query;
 	if (!channelId) {
-		return res.status(400).send("<h1>Please provide a channelId</h1>");
+		await refreshOldestChannelData();
+		console.log(
+			"Run refreshOldestChannelData at " + moment().format("YYYY-MM-DD HH:mm:ss")
+		);
 	}
 
 	console.log("Start filling database");
@@ -252,15 +253,3 @@ async function createOrUpdateVideosFromChannel(channelId) {
 		console.log("No new videos to add to database");
 	}
 }
-
-// Start the app
-const server = http.createServer(app);
-server.listen(port, () => {
-	console.log(`App running on port: ${port}`);
-	cron.schedule("0 0 * * *", async () => {
-		await refreshOldestChannelData();
-		console.log(
-			"Run refreshOldestChannelData at " + moment().format("YYYY-MM-DD HH:mm:ss")
-		);
-	});
-});
