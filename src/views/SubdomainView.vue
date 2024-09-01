@@ -71,6 +71,9 @@
                           <v-icon icon="mdi-eye" size="small" color="white" class="mr-1"></v-icon>
                           <span style="color: white;">{{ getHumanReadableNumber(item.viewCount) }}</span>
                         </div>
+                        <div class="video-title" style="color: white; position: absolute; bottom: 8px; left: 8px; background-color: rgba(0, 0, 0, 0.6); padding: 4px 8px; border-radius: 4px;">
+                          <span>{{ item.title }}</span>
+                        </div>
                       </v-img>
                     </v-card>
                   </template>
