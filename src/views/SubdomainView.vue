@@ -164,7 +164,7 @@ const fetchVideos = async (dateObject = { days: 0, weeks: 0, months: 0 }) => {
   }
 
   const baseUrl = import.meta.env.VITE_ENVIRONMENT === 'production'
-    ? 'https://tube.yt'
+    ? `https://${subdomain.value}.tube.yt`
     : 'http://localhost:3003';
 
   try {
