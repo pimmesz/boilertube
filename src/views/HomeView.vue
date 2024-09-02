@@ -25,6 +25,10 @@
 					<v-icon icon="mdi-account-multiple" size="small" color="white" class="mr-1"></v-icon>
 					<p>{{ getHumanReadableNumber(channel.subscriberCount) }}</p>
 				</div>
+				<div v-if="channel.updatedAt" class="last-updated">
+					<v-icon icon="mdi-calendar" size="small" color="white" class="mr-1"></v-icon>
+					<p>{{ new Date(channel.updatedAt).toLocaleDateString() }}</p>
+				</div>
 			</a>
 		</template>
 	</div>
@@ -110,7 +114,7 @@ export default {
 		color: white;
 	}
 
-	.subscriber-count {
+	.subscriber-count, .last-updated {
 		margin-top: 5px;
 		font-size: 14px;
 		color: #555;
@@ -119,7 +123,6 @@ export default {
 		justify-content: center;	
 		color: white;
 		text-decoration: none;
-		padding-bottom: 10px;
 	}
 
 </style>
