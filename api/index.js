@@ -15,11 +15,6 @@ const app = express();
 const port = process.env.PORT || 3003;
 
 app.use(express.json());
-app.use(cors({
-  origin: ['https://tube.yt', 'https://www.tube.yt', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
 
 dotenv.config();
 
