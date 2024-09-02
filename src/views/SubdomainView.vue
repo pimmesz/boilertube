@@ -234,6 +234,7 @@ watch(customRangeNumberInput, (newValue) => {
 onMounted(async () => {
   subdomain.value = getSubdomain();
   channel.value = await fetchChannel();
+  console.log(channel.value.channelName, channel.value.id)
   await fetchVideos({ days: 0, weeks: 0, months: 1 });
 
 	if (videos.value.length < 3) {

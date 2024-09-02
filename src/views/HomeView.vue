@@ -8,7 +8,7 @@
 				:href="`https://${channel.subdomain}.tube.yt`"
 			>
 				<v-img 
-					v-if="channel.thumbnails?.medium?.url" 
+					v-if="channel.thumbnails?.default?.url && !channel.imageError" 
 					:src="channel.thumbnails.medium.url" 
 					:height="100" 
 					:width="100" 
@@ -17,6 +17,9 @@
 					alt="Channel logo" 
 					@error="(event) => handleImageError(event, channel)"
 				/>
+				<div v-else class="channel-list__item--name">
+					<p>{{ channel.channelName }}</p>
+				</div>
 				<div v-if="channel.subscriberCount" class="subscriber-count">
 					<v-icon icon="mdi-account-multiple" size="small" color="white" class="mr-1"></v-icon>
 					<p>{{ getHumanReadableNumber(channel.subscriberCount) }}</p>
@@ -46,6 +49,7 @@ export default {
 				availableChannels.value = response.data.channels
 					.map((channel) => {
 						channel.thumbnails = channel.thumbnails !== 'no_value' ? JSON.parse(channel.thumbnails) : null;
+						channel.imageError = false;
 						return channel;
 					})
 					.sort((a, b) => b.subscriberCount - a.subscriberCount);
@@ -62,7 +66,7 @@ export default {
 
 		const handleImageError = (event, channel) => {
 			console.error('Error loading image for channel:', channel, 'Error:', event);
-			// channel.thumbnails.medium.url = 'path/to/default/image.jpg';
+			channel.imageError = true;
 		};
 
 		onMounted(fetchAvailableChannels);
@@ -96,6 +100,14 @@ export default {
 		color: #000;
 		text-align: center;
 		text-decoration: none;
+		border: 1px solid white;
+	}
+	
+	.channel-list__item--name {
+		padding: 10px;
+		width: 100px;
+		height: 50px;
+		color: white;
 	}
 
 	.subscriber-count {
@@ -107,6 +119,7 @@ export default {
 		justify-content: center;	
 		color: white;
 		text-decoration: none;
+		padding-bottom: 10px;
 	}
 
 </style>
