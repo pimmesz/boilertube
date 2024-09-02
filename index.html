@@ -12,13 +12,14 @@
 		<script>
 			document.addEventListener('DOMContentLoaded', () => {
 				const subdomain = window.location.hostname.split('.')[0];
+				console.log(subdomain);
 				if (subdomain === 'Tube') {
 					return
 				}
 
 				const titleElement = document.getElementById('dynamic-title');
 				if (subdomain && titleElement) {
-					titleElement.textContent = `${subdomain.charAt(0).toUpperCase() + subdomain.slice(1)}.tube.yt`;
+					titleElement.textContent = `${subdomain.charAt(0) + subdomain.slice(1)}.tube.yt`;
 				}
 			});
 		</script>
