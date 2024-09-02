@@ -1,7 +1,7 @@
 <template>
   <v-container class="fill-height">
     <v-row no-gutters>
-      <v-col cols="12" sm="5" md="4" lg="3" xl="3" offset-sm="1" offset-md="1" offset-lg="1" offset-xl="1">
+      <v-col cols="12" sm="5" md="4" lg="3" xl="3" offset-sm="1" offset-md="1" offset-lg="2" offset-xl="2">
 				<a href="https://tube.yt" class="mb-4" v-if="!channelIsLoading">
 					<v-icon color="white" small>mdi-home</v-icon>
 				</a>
@@ -19,6 +19,7 @@
 								control-variant="stacked"
 								hide-details
 								density="compact"
+								:label="customRangeNumberInput === 999 ? '∞' : ''"
 							></v-number-input>
 						</v-col>
 						<v-col cols="7">
@@ -40,7 +41,7 @@
 					</v-btn>
         </div>
       </v-col>
-      <v-col cols="12" sm="5" md="6" lg="7" xl="7" offset-sm="1" offset-md="1" offset-lg="1" offset-xl="1">
+      <v-col cols="12" sm="5" md="6" lg="5" xl="5" offset-sm="1" offset-md="1" offset-lg="2" offset-xl="1">
         <v-progress-circular
           v-if="videosAreLoading"
           color="primary"
@@ -151,6 +152,7 @@ const fetchChannel = async () => {
 
 const fetchVideos = async (dateObject = { days: 0, weeks: 0, months: 0 }) => {
 	videosAreLoading.value = true;
+  channelIsLoading.value = true;
   let fromDate = new Date();
   const { days, weeks, months } = dateObject;
 
@@ -182,11 +184,14 @@ const fetchVideos = async (dateObject = { days: 0, weeks: 0, months: 0 }) => {
     console.error('Error fetching videos:', error);
   } finally {
     videosAreLoading.value = false;
+    channelIsLoading.value = false;
   }
 };
 
 const setAllTimeFilter = () => {
   videoFilterDate.value = { days: 0, weeks: 0, months: 999 };
+  customRangeMax.value = 999;
+  customRangeNumberInput.value = 999;
 };
 
 const openVideo = (videoId: string) => {
@@ -218,14 +223,24 @@ watch(customRangeDateInput, (newValue) => {
 });
 
 watch(customRangeNumberInput, (newValue) => {
+  console.log(newValue)
   switch (customRangeDateInput.value) {
     case 'Week':
+      if (newValue === 998) {
+        customRangeNumberInput.value = 52;
+      }
       videoFilterDate.value = { days: 0, weeks: newValue, months: 0 };
       break;
     case 'Month':
+      if (newValue === 998) {
+        customRangeNumberInput.value = 12;
+      }
       videoFilterDate.value = { days: 0, weeks: 0, months: newValue };
       break;
     case 'Year':
+      if (newValue === 998) {
+        customRangeNumberInput.value = 10;
+      }
       videoFilterDate.value = { days: 0, weeks: 0, months: newValue * 12 };
       break;
   }
@@ -234,14 +249,12 @@ watch(customRangeNumberInput, (newValue) => {
 onMounted(async () => {
   subdomain.value = getSubdomain();
   channel.value = await fetchChannel();
-  console.log(channel.value.channelName, channel.value.id)
   await fetchVideos({ days: 0, weeks: 0, months: 1 });
 
 	if (videos.value.length < 3) {
 		await fetchVideos({ days: 0, weeks: 0, months: 3 });
 		customRangeNumberInput.value = 3;
 	}
-  channelIsLoading.value = false;
 });
 </script>
 
