@@ -5,7 +5,7 @@
 				<a href="https://tube.yt" class="mb-4" v-if="!channelIsLoading">
 					<v-icon color="white" small>mdi-home</v-icon>
 				</a>
-        <div class="video-filter" v-if="channelIsLoading">
+        <div class="video-filter" v-if="!channelIsLoading">
 					<h1>{{ channel.channelName }}</h1>
 					<p class="text-caption">Last updated: {{ formatDate(channel.updatedAt) }}</p>
 					<p class="mb-4 text-caption">Filtered results: {{ videos.length }}</p>
