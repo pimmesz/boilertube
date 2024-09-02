@@ -23,12 +23,7 @@ app.get("/version", (req, res) => {
 });
 
 app.get("/email", (req, res) => {
-	// Send an email:
 	var client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
-
-	// Ignore SSL certificate errors
-	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 	client.sendEmail({
 		"From": "reminder@tube.yt",
 		"To": "login@pim.gg",
