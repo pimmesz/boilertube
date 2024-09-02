@@ -82,7 +82,9 @@ export default {
 	.channel-list {
 		display: flex;
 		justify-content: center;
+		align-items: center;
 		overflow-x: scroll;
+		flex-wrap: wrap;
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
