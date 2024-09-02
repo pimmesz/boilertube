@@ -12,6 +12,10 @@
 		<script>
 			document.addEventListener('DOMContentLoaded', () => {
 				const subdomain = window.location.hostname.split('.')[0];
+				if (subdomain === 'tube') {
+					return
+				}
+
 				const titleElement = document.getElementById('dynamic-title');
 				if (subdomain && titleElement) {
 					titleElement.textContent = `${subdomain.charAt(0).toUpperCase() + subdomain.slice(1)}.tube.yt`;
