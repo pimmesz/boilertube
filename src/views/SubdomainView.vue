@@ -76,7 +76,7 @@
                       @click="openVideo(item.id)"
                     >
                       <v-img
-                        :src="item.thumbnails.high.url"
+                        :src="item.thumbnails.maxres.url"
                         :aspect-ratio="16/9"
                         cover
                       >
