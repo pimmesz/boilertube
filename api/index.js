@@ -8,7 +8,7 @@ import packageJson from '../package.json' assert { type: 'json' };
 import postmark from "postmark";
 
 // Check number of current Youtube api requests
-// https://console.cloud.google.com/apis/dashboard?project=boilerbot-373414https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=boilerbot-373414
+// https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=boilerbot-373414
 
 const prisma = new PrismaClient();
 const app = express();

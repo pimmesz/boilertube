@@ -17,7 +17,15 @@
 					cover 
 					alt="Channel logo" 
 					@error="(event) => handleImageError(event, channel)"
-				/>
+					:lazy-src="channel.thumbnails.default.url"
+					loading="lazy"
+				>
+					<template v-slot:placeholder>
+						<v-row class="fill-height ma-0" align="center" justify="center">
+							<v-progress-circular indeterminate color="grey lighten-5"></v-progress-circular>
+						</v-row>
+					</template>
+				</v-img>
 				<div v-else class="channel-list__item--name">
 					<p>{{ channel.channelName }}</p>
 				</div>
