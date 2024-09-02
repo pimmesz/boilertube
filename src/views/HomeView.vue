@@ -6,6 +6,7 @@
 				class="channel-list__item"
 				v-for="channel in availableChannels" :key="channel.id"
 				:href="`https://${channel.subdomain}.tube.yt`"
+				:style="{ border: channel.imageError ? '1px solid white' : 'none' }"
 			>
 				<v-img 
 					v-if="channel.thumbnails?.default?.url && !channel.imageError" 
@@ -100,7 +101,6 @@ export default {
 		color: #000;
 		text-align: center;
 		text-decoration: none;
-		border: 1px solid white;
 	}
 	
 	.channel-list__item--name {
