@@ -248,16 +248,21 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@media only screen and (max-width: 599px) {
+}
+
+@media only screen and (min-width: 600px) {
+	.video-filter {
+		position: sticky;
+		top: 50%;
+		transform: translateY(-50%);
+	}
+}
+
 .infinite-scroll {
   height: 90vh;
   overflow-y: auto;
   box-shadow: inset 0 -10px 10px -10px rgba(0,0,0,0.1);
-}
-
-.video-filter {
-  position: sticky;
-  top: 50%;
-	transform: translateY(-50%);
 }
 
 .v-card {
