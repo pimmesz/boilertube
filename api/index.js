@@ -4,9 +4,9 @@ import axios from "axios";
 import path from "path";
 import cors from "cors";
 import * as dotenv from "dotenv";
-import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
 import packageJson from '../package.json' assert { type: 'json' };
+import postmark from "postmark";
 
 const prisma = new PrismaClient();
 const app = express();
@@ -20,6 +20,30 @@ dotenv.config();
 // Endpoints
 app.get("/version", (req, res) => {
 	res.json({ version: packageJson.version });
+});
+
+app.get("/email", (req, res) => {
+	// Send an email:
+	var client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
+
+	// Ignore SSL certificate errors
+	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+	client.sendEmail({
+		"From": "reminder@tube.yt",
+		"To": "login@pim.gg",
+		"Subject": "Hello from Postmark",
+		"HtmlBody": "<strong>Hello</strong> dear Postmark user.",
+		"TextBody": "Hello from Postmark!",
+		"MessageStream": "outbound"
+	}, (error, result) => {
+		if (error) {
+			console.error("Unable to send email: ", error.message);
+			res.status(500).json({ error: error.message });
+		} else {
+			res.json('EMAIL SENT');
+		}
+	});
 });
 
 app.get("/videos", async (req, res) => {
