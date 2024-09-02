@@ -150,6 +150,7 @@ const fetchChannel = async () => {
 };
 
 const fetchVideos = async (dateObject = { days: 0, weeks: 0, months: 0 }) => {
+	videosAreLoading.value = true;
   let fromDate = new Date();
   const { days, weeks, months } = dateObject;
 
@@ -179,6 +180,8 @@ const fetchVideos = async (dateObject = { days: 0, weeks: 0, months: 0 }) => {
     }));
   } catch (error) {
     console.error('Error fetching videos:', error);
+  } finally {
+    videosAreLoading.value = false;
   }
 };
 
@@ -234,7 +237,6 @@ onMounted(async () => {
 	console.log(channel.value.subdomain,channel.value.id);
   await fetchVideos({ days: 0, weeks: 0, months: 1 });
   channelIsLoading.value = false;
-	videosAreLoading.value = false;
 });
 </script>
 
