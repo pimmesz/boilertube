@@ -129,7 +129,7 @@ const formatDate = (date: string) => {
 
 const getSubdomain = (): string => {
   if (import.meta.env.VITE_ENVIRONMENT === 'local') {
-    return 'horberlin';
+    return 'cercle';
   }
   const host = window.location.hostname;
   const parts = host.split('.');
@@ -234,8 +234,12 @@ watch(customRangeNumberInput, (newValue) => {
 onMounted(async () => {
   subdomain.value = getSubdomain();
   channel.value = await fetchChannel();
-	console.log(channel.value.subdomain,channel.value.id);
   await fetchVideos({ days: 0, weeks: 0, months: 1 });
+
+	if (videos.value.length < 3) {
+		await fetchVideos({ days: 0, weeks: 0, months: 3 });
+		customRangeNumberInput.value = 3;
+	}
   channelIsLoading.value = false;
 });
 </script>
