@@ -9,8 +9,6 @@ import { PrismaClient } from "@prisma/client";
 import packageJson from '../package.json' assert { type: 'json' };
 
 const prisma = new PrismaClient();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3003;
 
@@ -51,12 +49,13 @@ app.get("/channels/:subdomain", async (req, res) => {
 app.get("/start-fill-database", async (req, res) => {
 	const { channelid: channelId = '' } = req.query;
 	if (!channelId) {
-		return res.status(400).send("<h1>Please provide a channelId</h1>");
+		await refreshOldestChannelData();
+		res.send(`Refresh oldest channel database to the brim!!`);
+	} else {
+		await upsertVideosFromChannel(channelId);
+		res.send(`Fill the ${channelId} database to the brim!!`);
 	}
 
-	console.log("Start filling database");
-	await createOrUpdateVideosFromChannel(channelId);
-	res.send(`Fill the ${channelId} database to the brim!!`);
 });
 
 // Functions
@@ -121,8 +120,8 @@ async function refreshOldestChannelData() {
 	});
 
 	if (oldestChannel) {
-		console.log(`Refreshing ${oldestChannel.channelName} channel data`);
-		await createOrUpdateVideosFromChannel(oldestChannel.id);
+		console.log(`Refreshing ${oldestChannel.channelName} last updated on ${oldestChannel.updatedAt}`);
+		await upsertVideosFromChannel(oldestChannel.id);
 	}
 }
 
@@ -193,7 +192,7 @@ async function getChannelInfo(channelId) {
 	return response.data.items[0];
 }
 
-async function addChannelToDatabase(channelId) {
+async function upsertChannelInfo(channelId) {
 	const channelInfo = await getChannelInfo(channelId);
 	await prisma.channels.upsert({
 		where: { id: channelId },
@@ -237,8 +236,8 @@ async function checkIfVideosAreOutdated(channelInfo) {
 	}
 }
 
-async function createOrUpdateVideosFromChannel(channelId) {
-	const channelInfo = await addChannelToDatabase(channelId);
+async function upsertVideosFromChannel(channelId) {
+	const channelInfo = await upsertChannelInfo(channelId);
 	const areVideosOutdated = await checkIfVideosAreOutdated(channelInfo);
 	
 	if (areVideosOutdated) {
