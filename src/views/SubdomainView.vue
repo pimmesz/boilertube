@@ -2,39 +2,51 @@
   <v-container class="fill-height">
     <v-row no-gutters>
       <v-col cols="12" sm="5" md="4" lg="3" xl="3" offset-sm="1" offset-md="1" offset-lg="1" offset-xl="1">
+				<a href="/" class="mb-4" v-if="!channelIsLoading">
+					<v-icon color="white" small>mdi-home</v-icon>
+				</a>
         <div class="video-filter">
-          <h1>{{ channel.channelName }}</h1>
-          <p class="text-caption">Last updated: {{ formatDate(channel.updatedAt) }}</p>
-					<p class="mb-4 text-caption">Number of videos: {{ videos.length }}</p>
-          <p class="mb-4">Most viewed {{ subdomain }} Youtube videos in:</p>
-          <v-row align="center" class="mb-4">
-            <v-col cols="5">
-              <v-number-input
-                v-model="customRangeNumberInput"
-                :max="customRangeMax"
-                :min="customRangeMin"
-								control-variant="stacked"
-                hide-details
-                density="compact"
-              ></v-number-input>
-            </v-col>
-            <v-col cols="7">
-              <v-select
-                v-model="customRangeDateInput"
-                :items="['Week', 'Month', 'Year']"
-                hide-details
-                density="compact"
-              ></v-select>
-            </v-col>
-          </v-row>
-          <v-btn
-            variant="outlined"
-            :block="isMobile"
-            @click="setAllTimeFilter"
-            class="mb-4"
-          >
-            Most viewed videos ever
-          </v-btn>
+          <v-progress-circular
+            v-if="channelIsLoading"
+            color="primary"
+            indeterminate
+            size="64"
+            class="ma-auto d-block"
+          ></v-progress-circular>
+          <template v-else>
+            <h1>{{ channel.channelName }}</h1>
+            <p class="text-caption">Last updated: {{ formatDate(channel.updatedAt) }}</p>
+            <p class="mb-4 text-caption">Filtered results: {{ videos.length }}</p>
+            <p class="mb-4">Most viewed {{ subdomain }} Youtube videos in:</p>
+            <v-row align="center" class="mb-4">
+              <v-col cols="5">
+                <v-number-input
+                  v-model="customRangeNumberInput"
+                  :max="customRangeMax"
+                  :min="customRangeMin"
+                  control-variant="stacked"
+                  hide-details
+                  density="compact"
+                ></v-number-input>
+              </v-col>
+              <v-col cols="7">
+                <v-select
+                  v-model="customRangeDateInput"
+                  :items="['Week', 'Month', 'Year']"
+                  hide-details
+                  density="compact"
+                ></v-select>
+              </v-col>
+            </v-row>
+            <v-btn
+              variant="outlined"
+              :block="isMobile"
+              @click="setAllTimeFilter"
+              class="mb-4"
+            >
+              Most viewed videos ever
+            </v-btn>
+          </template>
         </div>
       </v-col>
       <v-col cols="12" sm="5" md="6" lg="7" xl="7" offset-sm="1" offset-md="1" offset-lg="1" offset-xl="1">
@@ -113,7 +125,8 @@ const isMobile = computed(() => width.value < 600);
 const subdomain = ref('');
 const channel = ref({});
 const videoFilterDate = ref({ days: 0, weeks: 0, months: 1 });
-const videosAreLoading = ref(false);
+const videosAreLoading = ref(true);
+const channelIsLoading = ref(true);
 
 const getHumanReadableNumber = (number: number) => {
   return numeral(number).format('0.0a');
@@ -146,7 +159,6 @@ const fetchChannel = async () => {
 };
 
 const fetchVideos = async (dateObject = { days: 0, weeks: 0, months: 0 }) => {
-  videosAreLoading.value = true;
   let fromDate = new Date();
   const { days, weeks, months } = dateObject;
 
@@ -176,8 +188,6 @@ const fetchVideos = async (dateObject = { days: 0, weeks: 0, months: 0 }) => {
     }));
   } catch (error) {
     console.error('Error fetching videos:', error);
-  } finally {
-    videosAreLoading.value = false;
   }
 };
 
@@ -232,6 +242,8 @@ onMounted(async () => {
   channel.value = await fetchChannel();
 	console.log(channel.value.subdomain,channel.value.id);
   await fetchVideos({ days: 0, weeks: 0, months: 1 });
+  channelIsLoading.value = false;
+	videosAreLoading.value = false;
 });
 </script>
 
