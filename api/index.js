@@ -1,12 +1,14 @@
 import express from "express";
 import http from "http";
 import axios from "axios";
-import path from "path";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import packageJson from '../package.json' assert { type: 'json' };
 import postmark from "postmark";
+
+// Check number of current Youtube api requests
+// https://console.cloud.google.com/apis/dashboard?project=boilerbot-373414
 
 const prisma = new PrismaClient();
 const app = express();
@@ -161,34 +163,29 @@ async function upsertVideosWithDetails(video) {
 }
 
 async function getVideoInfoPerYoutubePage(uploadsPlaylistId, pageToken = "", iteration = 0) {
-	console.log('getVideoInfoPerYoutubePage');
+	console.log('Fetching video info for playlist:', uploadsPlaylistId, 'Page token:', pageToken);
 	try {
-		const response = await axios.get(
-			"https://www.googleapis.com/youtube/v3/playlistItems",
-			{
-				params: {
-					part: 'snippet',
-					maxResults: 50,
-					pageToken,
-					playlistId: uploadsPlaylistId,
-					key: process.env.YOUTUBE_API_KEY
-				}
+		const response = await axios.get("https://www.googleapis.com/youtube/v3/playlistItems", {
+			params: {
+				part: 'snippet',
+				maxResults: 50,
+				pageToken,
+				playlistId: uploadsPlaylistId,
+				key: process.env.YOUTUBE_API_KEY
 			}
-		);
+		});
 
 		const { nextPageToken, items } = response.data;
 
-		await Promise.all(
-			items.map(async (video) => {
-				const videoDetails = await getVideoDetails(video.snippet.resourceId.videoId);
-				if (videoDetails && videoDetails.viewCount) {
-					await upsertVideosWithDetails(videoDetails);
-				}
-			})
-		);
+		for (const video of items) {
+			const videoDetails = await getVideoDetails(video.snippet.resourceId.videoId);
+			if (videoDetails && videoDetails.viewCount) {
+				await upsertVideosWithDetails(videoDetails);
+			}
+		}
 
 		if (nextPageToken) {
-			console.log("iteration - ", iteration + 1);
+			console.log("Fetching next page, iteration:", iteration + 1);
 			await getVideoInfoPerYoutubePage(uploadsPlaylistId, nextPageToken, iteration + 1);
 		}
 	} catch (error) {
