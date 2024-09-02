@@ -20,15 +20,15 @@ app.use(cors());
 dotenv.config();
 
 // Middleware to redirect www to non-www
-// app.use((req, res, next) => {
-// 	console.log('STOPT STOP')
-// 	console.log('HERE', req.headers.origin)
-//   if (req.headers.origin.includes('www.')) {
-//     const newHost = req.headers.origin.slice(4);
-//     return res.redirect(301, req.protocol + '://' + newHost + req.originalUrl);
-//   }
-//   next();
-// });
+app.use((req, res, next) => {
+	console.log('STOPT STOP')
+	console.log('HERE', req.headers.origin)
+  if (req.headers.origin.includes('www.')) {
+    const newHost = req.headers.origin.slice(4);
+    return res.redirect(301, req.protocol + '://' + newHost + req.originalUrl);
+  }
+  next();
+});
 
 // Endpoints
 app.get("/version", (req, res) => {

@@ -25,10 +25,10 @@
 					<v-icon icon="mdi-account-multiple" size="small" color="white" class="mr-1"></v-icon>
 					<p>{{ getHumanReadableNumber(channel.subscriberCount) }}</p>
 				</div>
-				<div v-if="channel.updatedAt" class="last-updated">
+				<!-- <div v-if="channel.updatedAt" class="last-updated">
 					<v-icon icon="mdi-calendar" size="small" color="white" class="mr-1"></v-icon>
 					<p>{{ new Date(channel.updatedAt).toLocaleDateString() }}</p>
-				</div>
+				</div> -->
 			</a>
 		</template>
 	</div>
