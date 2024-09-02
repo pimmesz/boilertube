@@ -8,8 +8,10 @@ import "@vuepic/vue-datepicker/dist/main.css";
 import { loadFonts } from "./plugins/webfontloader";
 import "./assets/main.css";
 import { inject } from "@vercel/analytics"
+import { injectSpeedInsights } from '@vercel/speed-insights';
 
 inject();
+injectSpeedInsights();
 loadFonts();
 
 const app = createApp(App);
