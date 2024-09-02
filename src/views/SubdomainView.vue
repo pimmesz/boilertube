@@ -2,7 +2,7 @@
   <v-container class="fill-height">
     <v-row no-gutters>
       <v-col cols="12" sm="5" md="4" lg="3" xl="3" offset-sm="1" offset-md="1" offset-lg="1" offset-xl="1">
-				<a href="/" class="mb-4" v-if="!channelIsLoading">
+				<a href="https://tube.yt" class="mb-4" v-if="!channelIsLoading">
 					<v-icon color="white" small>mdi-home</v-icon>
 				</a>
         <div class="video-filter" v-if="channelIsLoading">
