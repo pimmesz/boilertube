@@ -44,10 +44,9 @@
       <v-col cols="12" sm="5" md="6" lg="5" xl="5" offset-sm="1" offset-md="1" offset-lg="2" offset-xl="1">
         <v-progress-circular
           v-if="videosAreLoading"
-          color="primary"
+          color="white"
           indeterminate
           size="64"
-          class="ma-auto d-block"
         ></v-progress-circular>
         <template v-else>
           <div v-if="videos.length > 0" class="infinite-scroll">
