@@ -19,6 +19,15 @@ app.use(cors());
 
 dotenv.config();
 
+// Middleware to redirect www to non-www
+app.use((req, res, next) => {
+  if (req.headers.host.startsWith('www.')) {
+    const newHost = req.headers.host.slice(4);
+    return res.redirect(301, req.protocol + '://' + newHost + req.originalUrl);
+  }
+  next();
+});
+
 // Endpoints
 app.get("/version", (req, res) => {
 	res.json({ version: packageJson.version });
