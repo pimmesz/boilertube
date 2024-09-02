@@ -46,7 +46,7 @@ export default {
 
 		const fetchAvailableChannels = async () => {
 			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
-				? "https://www.tube.yt"
+				? "https://tube.yt"
 				: "http://localhost:3003";
 
 			try {
