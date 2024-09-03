@@ -2,6 +2,7 @@
 	<div class="channel-list">
 		<v-progress-circular v-if="isLoading" indeterminate color="white"></v-progress-circular>
 		<template v-else>
+			isIos {{ isIOS }}
 			<a
 				class="channel-list__item"
 				v-for="channel in availableChannels" :key="channel.id"
@@ -43,7 +44,7 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted } from "vue";
+import { computed,ref, onMounted } from "vue";
 import axios from "axios";
 import numeral from 'numeral';
 
@@ -51,6 +52,11 @@ export default {
 	setup() {
 		const availableChannels = ref([]);
 		const isLoading = ref(true);
+		const isIOS = computed(() => {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    });
+
+		console.log(isIOS.value);
 
 		const fetchAvailableChannels = async () => {
 			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
@@ -62,6 +68,14 @@ export default {
 				availableChannels.value = response.data.channels
 					.map((channel) => {
 						channel.thumbnails = channel.thumbnails !== 'no_value' ? JSON.parse(channel.thumbnails) : null;
+						if (channel.thumbnails) {
+							// Replace youtube image url yt3 with yt4 for better support on iOS
+							for (const size in channel.thumbnails) {
+								if (channel.thumbnails[size].url) {
+									channel.thumbnails[size].url = channel.thumbnails[size].url.replace('yt3', 'yt4');
+								}
+							}
+						}
 						channel.imageError = false;
 						return channel;
 					})

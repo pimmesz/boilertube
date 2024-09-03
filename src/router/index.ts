@@ -15,11 +15,8 @@ function hasSubdomain() {
 // Determine the appropriate component based on the subdomain
 let homeComponent;
 if (import.meta.env.VITE_ENVIRONMENT === 'local') {
-	homeComponent = SubdomainView;
-} else if (window.location.hostname.includes('www')) {
 	homeComponent = HomeView;
-}
-else {
+} else {
 	homeComponent = hasSubdomain() ? SubdomainView : HomeView;
 }
 
