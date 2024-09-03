@@ -2,7 +2,7 @@
 	<div class="channel-list">
 		<v-progress-circular v-if="isLoading" indeterminate color="white"></v-progress-circular>
 		<template v-else>
-			isIos {{ isIOS }}
+			isIos {{ isIOS ? 'true' : 'false' }}
 			<a
 				class="channel-list__item"
 				v-for="channel in availableChannels" :key="channel.id"
@@ -56,8 +56,6 @@ export default {
       return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     });
 
-		console.log(isIOS.value);
-
 		const fetchAvailableChannels = async () => {
 			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
 				? "https://tube.yt"
@@ -67,6 +65,7 @@ export default {
 				const response = await axios.get(`${baseUrl}/available-channels`);
 				availableChannels.value = response.data.channels
 					.map((channel) => {
+						// Parse the thumbnails string into an object
 						channel.thumbnails = channel.thumbnails !== 'no_value' ? JSON.parse(channel.thumbnails) : null;
 						if (channel.thumbnails) {
 							// Replace youtube image url yt3 with yt4 for better support on iOS
