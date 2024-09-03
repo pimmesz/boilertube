@@ -8,7 +8,9 @@
 				:href="`https://${channel.subdomain}.tube.yt`"
 				:style="{ border: channel.imageError ? '1px solid white' : 'none' }"
 			>
-				<v-img 
+				test<br><img alt="asd" :src="channel.thumbnails.high.url" :height="100" :width="100"></img>
+				<br>
+				original<v-img 
 					v-if="channel.thumbnails?.default?.url && !channel.imageError" 
 					:src="channel.thumbnails.high.url" 
 					:height="100" 
