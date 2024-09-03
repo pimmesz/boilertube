@@ -47,6 +47,7 @@
           color="white"
           indeterminate
           size="64"
+          class="d-flex mx-auto"
         ></v-progress-circular>
         <template v-else>
           <div v-if="videos.length > 0" class="infinite-scroll">

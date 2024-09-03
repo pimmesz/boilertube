@@ -99,7 +99,7 @@ async function getAllVideosBetweenDates(channel = '', fromDate = '') {
 
 	return videos
 		.filter(video => video.viewCount !== 0)
-		.sort((a, b) => b.viewCount - a.viewCount);
+		.sort((a, b) => Number(b.viewCount) - Number(a.viewCount));
 }
 
 function sanitizeFilename(filename) {
