@@ -23,24 +23,24 @@ app.get("/version", (req, res) => {
 	res.json({ version: packageJson.version });
 });
 
-app.get("/email", (req, res) => {
-	var client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
-	client.sendEmail({
-		"From": "reminder@tube.yt",
-		"To": "login@pim.gg",
-		"Subject": "Hello from Postmark",
-		"HtmlBody": "<strong>Hello</strong> dear Postmark user.",
-		"TextBody": "Hello from Postmark!",
-		"MessageStream": "outbound"
-	}, (error, result) => {
-		if (error) {
-			console.error("Unable to send email: ", error.message);
-			res.status(500).json({ error: error.message });
-		} else {
-			res.json('EMAIL SENT');
-		}
-	});
-});
+// app.get("/email", (req, res) => {
+// 	var client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
+// 	client.sendEmail({
+// 		"From": "reminder@tube.yt",
+// 		"To": "login@pim.gg",
+// 		"Subject": "Hello from Postmark",
+// 		"HtmlBody": "<strong>Hello</strong> dear Postmark user.",
+// 		"TextBody": "Hello from Postmark!",
+// 		"MessageStream": "outbound"
+// 	}, (error, result) => {
+// 		if (error) {
+// 			console.error("Unable to send email: ", error.message);
+// 			res.status(500).json({ error: error.message });
+// 		} else {
+// 			res.json('EMAIL SENT');
+// 		}
+// 	});
+// });
 
 app.get("/videos", async (req, res) => {
 	const { fromdate: fromDate, channel } = req.query;
@@ -77,6 +77,7 @@ app.get("/start-fill-database", async (req, res) => {
 			res.status(200).json({ message: `Updated database for channel ${channelId} successfully` });
 		}
 	} catch (error) {
+		console.log(error)
 		res.status(429).json({ error: "Exceeded Youtube API quota" });
 	}
 });
@@ -127,7 +128,7 @@ async function getVideoDetails(videoId) {
 			publishedAt: videoDetails.snippet.publishedAt,
 			title: videoDetails.snippet.title,
 			thumbnails: JSON.stringify(videoDetails.snippet.thumbnails),
-			viewCount: Number(videoDetails.statistics.viewCount),
+			viewCount: BigInt(videoDetails.statistics.viewCount),
 		};
 	} catch (error) {
 		console.error("Error fetching video details:", error.message);
@@ -216,8 +217,8 @@ async function upsertChannelInfo(channelId) {
 		where: { id: channelId },
 		update: {
 			thumbnails: JSON.stringify(channelInfo.snippet.thumbnails),
-			subscriberCount: Number(channelInfo.statistics.subscriberCount),
-			viewCount: Number(channelInfo.statistics.viewCount),
+			subscriberCount: BigInt(channelInfo.statistics.subscriberCount),
+			viewCount: BigInt(channelInfo.statistics.viewCount),
 		},
 		create: {
 			id: channelId,
@@ -225,8 +226,8 @@ async function upsertChannelInfo(channelId) {
 			subdomain: sanitizeFilename(channelInfo.snippet.title),
 			updatedAt: new Date().toISOString(),
 			thumbnails: JSON.stringify(channelInfo.snippet.thumbnails),
-			subscriberCount: Number(channelInfo.statistics.subscriberCount),
-			viewCount: Number(channelInfo.statistics.viewCount),
+			subscriberCount: BigInt(channelInfo.statistics.subscriberCount),
+			viewCount: BigInt(channelInfo.statistics.viewCount),
 		}
 	});
 
@@ -242,7 +243,7 @@ async function setChannelUpdatedAt(channelId) {
 
 async function checkIfVideosAreOutdated(channelInfo) {
 	try {
-		const countYoutubeVideos = Number(channelInfo.statistics.videoCount);
+		const countYoutubeVideos = BigInt(channelInfo.statistics.videoCount);
 		const countSavedVideos = await prisma.video.count({
 			where: { channel: sanitizeFilename(channelInfo.snippet.title) },
 		});
