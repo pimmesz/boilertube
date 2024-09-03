@@ -15,8 +15,12 @@ const app = express();
 const port = process.env.PORT || 3003;
 
 app.use(express.json());
+app.use(cors());
 
 dotenv.config();
+
+// Serialize BigInt to String
+BigInt.prototype.toJSON = function() { return this.toString() };
 
 // Endpoints
 app.get("/version", (req, res) => {
