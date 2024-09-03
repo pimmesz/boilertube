@@ -68,14 +68,17 @@ app.get("/channels/:subdomain", async (req, res) => {
 
 app.get("/start-fill-database", async (req, res) => {
 	const { channelid: channelId = '' } = req.query;
-	if (!channelId) {
-		await refreshOldestChannelData();
-		res.send(`Refresh oldest channel database to the brim!!`);
-	} else {
-		await upsertVideosFromChannel(channelId);
-		res.send(`Fill the ${channelId} database to the brim!!`);
+	try {
+		if (!channelId) {
+			await refreshOldestChannelData();
+			res.status(200).json({ message: "Refreshed oldest channel data successfully" });
+		} else {
+			await upsertVideosFromChannel(channelId);
+			res.status(200).json({ message: `Updated database for channel ${channelId} successfully` });
+		}
+	} catch (error) {
+		res.status(429).json({ error: "Exceeded Youtube API quota" });
 	}
-
 });
 
 // Functions
