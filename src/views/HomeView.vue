@@ -59,20 +59,25 @@ export default {
 
 			try {
 				const response = await axios.get(`${baseUrl}/available-channels`);
-				availableChannels.value = response.data.channels
-					.map((channel) => {
-						channel.thumbnails = channel.thumbnails !== 'no_value' ? JSON.parse(channel.thumbnails) : null;
-						if (channel.thumbnails) {
-							for (const size in channel.thumbnails) {
-								if (channel.thumbnails[size] && channel.thumbnails[size].url) {
-									channel.thumbnails[size].url = channel.thumbnails[size].url.replace('ggpht', 'googleusercontent');
-								}
-							}
+				availableChannels.value = await Promise.all(response.data.channels.map(async (channel) => {
+					channel.thumbnails = channel.thumbnails !== 'no_value' ? JSON.parse(channel.thumbnails) : null;
+					channel.imageError = false;
+					if (channel.thumbnails && channel.thumbnails.default && channel.thumbnails.default.url) {
+						try {
+							const imageResponse = await fetch(channel.thumbnails.default.url);
+							const blob = await imageResponse.blob();
+							const actualFileType = blob.type.split('/')[1];
+							console.log(`Actual file type for ${channel.channelName}:`, actualFileType);
+							channel.thumbnails.default.url = URL.createObjectURL(blob);
+							channel.thumbnails.high.url = URL.createObjectURL(blob);
+						} catch (error) {
+							console.error(`Error fetching image for ${channel.channelName}:`, error);
+							channel.imageError = true;
 						}
-						channel.imageError = false;
-						return channel;
-					})
-					.sort((a, b) => b.subscriberCount - a.subscriberCount);
+					}
+					return channel;
+				}));
+				availableChannels.value.sort((a, b) => b.subscriberCount - a.subscriberCount);
 				console.log(availableChannels.value);
 			} catch (error) {
 				console.error('Error fetching channels:', error);
