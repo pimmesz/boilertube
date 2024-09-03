@@ -66,6 +66,7 @@ export default {
 						return channel;
 					})
 					.sort((a, b) => b.subscriberCount - a.subscriberCount);
+				console.log(availableChannels.value);
 			} catch (error) {
 				console.error('Error fetching channels:', error);
 			} finally {
