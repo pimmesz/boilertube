@@ -1,47 +1,6 @@
 <template>
-	<div class="channel-list">
-		<v-progress-circular v-if="isLoading" indeterminate color="white"></v-progress-circular>
-		<template v-else>
-			<a
-				class="channel-list__item"
-				v-for="channel in availableChannels" :key="channel.id"
-				:href="`https://${channel.subdomain}.tube.yt`"
-				:style="{ border: channel.imageError ? '1px solid white' : 'none' }"
-			>
-				test<br><img alt="asd" :src="channel.thumbnails.high.url" :height="100" :width="100"></img>
-				<br>
-				original<v-img 
-					v-if="channel.thumbnails?.default?.url && !channel.imageError" 
-					:src="channel.thumbnails.high.url" 
-					:height="100" 
-					:width="100" 
-					aspect-ratio="1/1" 
-					cover 
-					alt="Channel logo" 
-					@error="(event) => handleImageError(event, channel)"
-					:lazy-src="channel.thumbnails.default.url"
-					loading="lazy"
-				>
-					<template v-slot:placeholder>
-						<v-row class="fill-height ma-0" align="center" justify="center">
-							<v-progress-circular indeterminate color="grey lighten-5"></v-progress-circular>
-						</v-row>
-					</template>
-				</v-img>
-				<div v-else class="channel-list__item--name">
-					<p>{{ channel.channelName }}</p>
-				</div>
-				<div v-if="channel.subscriberCount" class="subscriber-count">
-					<v-icon icon="mdi-account-multiple" size="small" color="white" class="mr-1"></v-icon>
-					<p>{{ getHumanReadableNumber(channel.subscriberCount) }}</p>
-				</div>
-				<!-- <div v-if="channel.updatedAt" class="last-updated">
-					<v-icon icon="mdi-calendar" size="small" color="white" class="mr-1"></v-icon>
-					<p>{{ new Date(channel.updatedAt).toLocaleDateString() }}</p>
-				</div> -->
-			</a>
-		</template>
-	</div>
+	<img v-for="channel in availableChannels" alt="asd" :src="channel.thumbnails.high.url" :height="100" :width="100"></img>
+	
 </template>
 
 <script lang="ts">
