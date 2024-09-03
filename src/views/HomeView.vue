@@ -10,7 +10,7 @@
 			>
 				<v-img 
 					v-if="channel.thumbnails?.default?.url && !channel.imageError" 
-					:src="channel.thumbnails.medium.url" 
+					:src="channel.thumbnails.default.url" 
 					:height="100" 
 					:width="100" 
 					aspect-ratio="1/1" 
