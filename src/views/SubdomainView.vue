@@ -222,7 +222,6 @@ watch(customRangeDateInput, (newValue) => {
 });
 
 watch(customRangeNumberInput, (newValue) => {
-  console.log(newValue)
   switch (customRangeDateInput.value) {
     case 'Week':
       if (newValue === 998) {
