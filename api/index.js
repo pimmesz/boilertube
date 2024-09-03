@@ -5,7 +5,7 @@ import cors from "cors";
 import * as dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import packageJson from '../package.json' assert { type: 'json' };
-import postmark from "postmark";
+import { google } from 'googleapis';
 
 // Check number of current Youtube api requests
 // https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=boilerbot-373414
@@ -14,9 +14,43 @@ const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 3003;
 
+const { CLIENT_EXPIRATION_DATE, CLIENT_REFRESH_TOKEN, CLIENT_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI } = process.env;
+
+const { OAuth2 } = google.auth;
+const SCOPE = 'https://www.googleapis.com/auth/youtube';
+
+const oauth2Client = new OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+
+if (!CLIENT_EXPIRATION_DATE) {
+  throw new Error('The token expiration date is required');
+}
+
+const credentials = {
+  access_token: CLIENT_TOKEN,
+  expiry_date: +CLIENT_EXPIRATION_DATE, // The plus sign in front cast the string type to a number
+  refresh_token: CLIENT_REFRESH_TOKEN,
+  scope: SCOPE,
+  token_type: 'Bearer',
+};
+
+oauth2Client.setCredentials(credentials);
+
+// Set up token refresh mechanism
+oauth2Client.on('tokens', (tokens) => {
+  if (tokens.refresh_token) {
+    // Store the new refresh token
+    process.env.CLIENT_REFRESH_TOKEN = tokens.refresh_token;
+  }
+  // Always store the new access token
+  process.env.CLIENT_TOKEN = tokens.access_token;
+  process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
+
+  // Update the client's credentials
+  oauth2Client.setCredentials(tokens);
+});
+
 app.use(express.json());
 app.use(cors());
-
 dotenv.config();
 
 // Serialize BigInt to String
@@ -27,24 +61,99 @@ app.get("/version", (req, res) => {
 	res.json({ version: packageJson.version });
 });
 
-// app.get("/email", (req, res) => {
-// 	var client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
-// 	client.sendEmail({
-// 		"From": "reminder@tube.yt",
-// 		"To": "login@pim.gg",
-// 		"Subject": "Hello from Postmark",
-// 		"HtmlBody": "<strong>Hello</strong> dear Postmark user.",
-// 		"TextBody": "Hello from Postmark!",
-// 		"MessageStream": "outbound"
-// 	}, (error, result) => {
-// 		if (error) {
-// 			console.error("Unable to send email: ", error.message);
-// 			res.status(500).json({ error: error.message });
-// 		} else {
-// 			res.json('EMAIL SENT');
-// 		}
-// 	});
-// });
+
+app.get("/upsert-playlists", async (req, res) => {
+	try {
+		// Ensure the token is fresh before making the request
+		const freshCredentials = await oauth2Client.getAccessToken();
+		if (!freshCredentials || !freshCredentials.token) {
+			throw new Error('Failed to obtain fresh access token');
+		}
+		oauth2Client.setCredentials({ access_token: freshCredentials.token });
+
+		const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+
+		// Get all channels
+		const channels = await prisma.channels.findMany();
+		for (const channel of channels) {
+			// Specify the playlist title
+			const playlistTitle = `Top 30 Videos - ${channel.channelName}`;
+			const existingPlaylists = await youtube.playlists.list({
+				part: 'snippet',
+				mine: true
+			});
+
+			let playlistId = existingPlaylists.data.items.find(playlist => playlist.snippet.title === playlistTitle)?.id;
+
+			// Parse the channel thumbnails
+			const channelThumbnails = JSON.parse(channel.thumbnails);
+
+			if (!playlistId) {
+				console.log('Creating playlist', playlistTitle);
+				// Create a new playlist if it doesn't exist
+				const response = await youtube.playlists.insert({
+					part: 'snippet,status',
+					requestBody: {
+						snippet: {
+							title: playlistTitle,
+							description: `Top 30 videos from ${playlistTitle}`,
+							thumbnails: {
+								medium: channelThumbnails.medium
+							}
+						},
+						status: {
+							privacyStatus: 'public'
+						}
+					}
+				});
+				playlistId = response.data.id;
+			} else {
+				// Update existing playlist thumbnail
+				await youtube.playlists.update({
+					part: 'snippet',
+					requestBody: {
+						id: playlistId,
+						snippet: {
+							title: playlistTitle,
+							description: `Top 30 videos from ${playlistTitle}`,
+							thumbnails: {
+								medium: channelThumbnails.medium
+							}
+						}
+					}
+				});
+			}
+
+			// Get top 30 videos for the channel
+			const topVideos = await prisma.video.findMany({
+				where: { channel: channel.id },
+				orderBy: { viewCount: 'desc' },
+				take: 30
+			});
+
+			// Add videos to the playlist
+			for (const video of topVideos) {
+				await youtube.playlistItems.insert({
+					part: 'snippet',
+					requestBody: {
+						snippet: {
+							playlistId: playlistId,
+							resourceId: {
+								kind: 'youtube#video',
+								videoId: video.id
+							}
+						}
+					}
+				});
+			}
+		}
+
+		res.status(200).json({ message: "Playlists created and videos added successfully" });
+	} catch (error) {
+		console.error("Error creating playlists or adding videos:", error);
+		res.status(500).json( error.response.data );
+	}
+});
 
 app.get("/videos", async (req, res) => {
 	const { fromdate: fromDate, channel } = req.query;
@@ -113,16 +222,18 @@ function sanitizeFilename(filename) {
 
 async function getVideoDetails(videoId) {
 	try {
-		const response = await axios.get(
-			`https://www.googleapis.com/youtube/v3/videos`,
-			{
-				params: {
-					part: 'statistics,snippet',
-					id: videoId,
-					key: process.env.YOUTUBE_API_KEY
-				}
-			}
-		);
+		// Ensure the token is fresh before making the request
+		const freshCredentials = await oauth2Client.getAccessToken();
+		if (!freshCredentials || !freshCredentials.token) {
+			throw new Error('Failed to obtain fresh access token');
+		}
+		oauth2Client.setCredentials({ access_token: freshCredentials.token });
+
+		const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+		const response = await youtube.videos.list({
+			part: 'statistics,snippet',
+			id: videoId
+		});
 
 		const videoDetails = response.data.items[0];
 
@@ -172,14 +283,19 @@ async function upsertVideosWithDetails(video) {
 async function getVideoInfoPerYoutubePage(uploadsPlaylistId, pageToken = "", iteration = 0) {
 	console.log('Fetching video info for playlist:', uploadsPlaylistId, 'Page token:', pageToken);
 	try {
-		const response = await axios.get("https://www.googleapis.com/youtube/v3/playlistItems", {
-			params: {
-				part: 'snippet',
-				maxResults: 50,
-				pageToken,
-				playlistId: uploadsPlaylistId,
-				key: process.env.YOUTUBE_API_KEY
-			}
+		// Ensure the token is fresh before making the request
+		const freshCredentials = await oauth2Client.getAccessToken();
+		if (!freshCredentials || !freshCredentials.token) {
+			throw new Error('Failed to obtain fresh access token');
+		}
+		oauth2Client.setCredentials({ access_token: freshCredentials.token });
+
+		const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+		const response = await youtube.playlistItems.list({
+			part: 'snippet',
+			maxResults: 50,
+			pageToken,
+			playlistId: uploadsPlaylistId
 		});
 
 		const { nextPageToken, items } = response.data;
@@ -201,16 +317,18 @@ async function getVideoInfoPerYoutubePage(uploadsPlaylistId, pageToken = "", ite
 }
 
 async function getChannelInfo(channelId) {
-	const response = await axios.get(
-		"https://www.googleapis.com/youtube/v3/channels",
-		{
-			params: {
-				part: 'snippet,contentDetails,statistics',
-				id: channelId,
-				key: process.env.YOUTUBE_API_KEY
-			}
-		}
-	);
+	// Ensure the token is fresh before making the request
+	const freshCredentials = await oauth2Client.getAccessToken();
+	if (!freshCredentials || !freshCredentials.token) {
+		throw new Error('Failed to obtain fresh access token');
+	}
+	oauth2Client.setCredentials({ access_token: freshCredentials.token });
+
+	const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+	const response = await youtube.channels.list({
+		part: 'snippet,contentDetails,statistics',
+		id: channelId
+	});
 
 	return response.data.items[0];
 }
