@@ -68,7 +68,7 @@
                       @click="openVideo(item.id)"
                     >
                       <v-img
-                        :src="item.thumbnails.maxres.url"
+                        :src="item?.thumbnails?.maxres?.url ? item.thumbnails.maxres.url : item.thumbnails.default.url"
                         :aspect-ratio="16/9"
                         cover
                       >
@@ -130,7 +130,7 @@ const formatDate = (date: string) => {
 
 const getSubdomain = (): string => {
   if (import.meta.env.VITE_ENVIRONMENT === 'local') {
-    return 'cercle';
+    return 'colors';
   }
   const host = window.location.hostname;
   const parts = host.split('.');
