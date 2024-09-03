@@ -193,12 +193,62 @@ app.get("/available-channels", async (req, res) => {
   res.json({ channels });
 });
 
+app.post("/send-telegram-message", async (req, res) => {
+  const { message } = req.body;
+  
+  if (!message) {
+    return res.status(400).json({ error: "Message is required" });
+  }
+
+  try {
+    const telegramApiUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_API_KEY}/sendMessage`;
+    await axios.post(telegramApiUrl, {
+      chat_id: process.env.TELEGRAM_CHAT_ID,
+      text: message
+    });
+    res.status(200).json({ message: "Telegram message sent successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to send Telegram message" });
+  }
+});
+
 app.get("/channels/:subdomain", async (req, res) => {
   const { subdomain } = req.params;
   const channel = await prisma.channels.findUnique({
     where: { subdomain },
   });
   res.json({ channel });
+});
+
+app.get("/search-channels/:channelName", async (req, res) => {
+  const { channelName } = req.params;
+  try {
+    const freshCredentials = await oauth2Client.getAccessToken();
+    if (!freshCredentials || !freshCredentials.token) {
+      throw new Error('Failed to obtain fresh access token');
+    }
+    oauth2Client.setCredentials({ access_token: freshCredentials.token });
+
+    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+    const response = await youtube.search.list({
+      part: 'snippet',
+      q: channelName,
+      type: 'channel',
+      maxResults: 5
+    });
+
+    const channels = response.data.items.map(item => ({
+      id: item.id.channelId,
+      title: item.snippet.title,
+      description: item.snippet.description,
+      thumbnails: item.snippet.thumbnails
+    }));
+
+    res.json({ channels });
+  } catch (error) {
+    console.error('Error searching for channels:', error);
+    res.status(500).json({ error: `An error occurred while searching for channels: ${error.errors[0].reason}` });
+  }
 });
 
 app.get("/start-fill-database", async (req, res) => {
@@ -335,7 +385,23 @@ async function getVideoInfoPerYoutubePage(uploadsPlaylistId, pageToken = "", ite
   }
 }
 
-async function getChannelInfo(channelId) {
+async function getChannelInfoByName(channelName) {
+  const freshCredentials = await oauth2Client.getAccessToken();
+  if (!freshCredentials || !freshCredentials.token) {
+    throw new Error('Failed to obtain fresh access token');
+  }
+  oauth2Client.setCredentials({ access_token: freshCredentials.token });
+
+  const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+  const response = await youtube.channels.list({
+    part: 'snippet,contentDetails,statistics',
+    id: channelId
+  });
+
+  return response.data.items[0];
+}
+
+async function getChannelInfoById(channelId) {
   const freshCredentials = await oauth2Client.getAccessToken();
   if (!freshCredentials || !freshCredentials.token) {
     throw new Error('Failed to obtain fresh access token');
@@ -352,7 +418,7 @@ async function getChannelInfo(channelId) {
 }
 
 async function upsertChannelInfo(channelId) {
-  const channelInfo = await getChannelInfo(channelId);
+  const channelInfo = await getChannelInfoById(channelId);
   await prisma.channels.upsert({
     where: { id: channelId },
     update: {

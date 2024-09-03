@@ -40,17 +40,66 @@
 			</a>
 		</template>
 	</div>
+	<v-btn @click="openRequestModal" color="primary" class="request-btn">Request</v-btn>
+	<v-dialog v-model="showRequestModal" max-width="500px">
+		<v-card>
+			<v-card-title>Request a Channel</v-card-title>
+			<v-card-text>
+				<v-text-field 
+					v-model="searchQuery" 
+					label="Search for a channel" 
+					@input="debouncedUpdateSearchResults"
+				></v-text-field>
+				<v-alert v-if="searchError" type="error" dense>
+					{{ searchError }}
+				</v-alert>
+				<v-list v-if="searchResults.length > 0">
+					<v-list-item
+						v-for="result in searchResults"
+						:key="result.id"
+						@click="selectSearchResult(result)"
+					>
+						<v-list-item-content>
+							<v-row align="center">
+								<v-col cols="auto" class="mr-3">
+									<v-img
+										:src="result.thumbnails?.default?.url"
+										:width="40"
+										:height="40"
+										class="rounded-circle"
+									></v-img>
+								</v-col>
+								<v-col>
+									<v-list-item-title>{{ result.name }}</v-list-item-title>
+									<v-list-item-subtitle>{{ result.description }}</v-list-item-subtitle>
+								</v-col>
+							</v-row>
+						</v-list-item-content>
+					</v-list-item>
+				</v-list>
+			</v-card-text>
+			<v-card-actions>
+				<v-spacer></v-spacer>
+				<v-btn color="blue darken-1" text @click="closeRequestModal">Cancel</v-btn>
+			</v-card-actions>
+		</v-card>
+	</v-dialog>
 </template>
 
 <script lang="ts">
-import { computed,ref, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import axios from "axios";
 import numeral from 'numeral';
+import { debounce } from 'lodash-es';
 
 export default {
 	setup() {
 		const availableChannels = ref([]);
 		const isLoading = ref(true);
+		const showRequestModal = ref(false);
+		const searchQuery = ref('');
+		const searchResults = ref([]);
+		const searchError = ref('');
 
 		const fetchAvailableChannels = async () => {
 			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
@@ -82,13 +131,84 @@ export default {
 			channel.imageError = true;
 		};
 
+		const openRequestModal = () => {
+			showRequestModal.value = true;
+			searchError.value = '';
+		};
+
+		const closeRequestModal = () => {
+			showRequestModal.value = false;
+			searchQuery.value = '';
+			searchResults.value = [];
+			searchError.value = '';
+		};
+
+		const updateSearchResults = async () => {
+			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
+				? "https://tube.yt"
+				: "http://localhost:3003";
+
+			if (searchQuery.value.trim() !== '') {
+				try {
+					const response = await axios.get(`${baseUrl}/search-channels/${encodeURIComponent(searchQuery.value)}`);
+					searchResults.value = response.data.channels.map(channel => ({
+						id: channel.id,
+						name: channel.title,
+						description: channel.description || 'N/A',
+						thumbnails: channel.thumbnails
+					}));
+					searchError.value = '';
+				} catch (error) {
+					console.error('Error searching for channels:', error.response);
+					searchResults.value = [];
+					if (error.response && error.response.data && error.response.data.error) {
+						searchError.value = error.response.data.error;
+					} else {
+						searchError.value = 'An error occurred while searching for channels';
+					}
+				}
+			} else {
+				searchResults.value = [];
+				searchError.value = '';
+			}
+		};
+
+		const debouncedUpdateSearchResults = debounce(async () => {
+			await updateSearchResults();
+		}, 500);
+
+		const selectSearchResult = async (result) => {
+			const message = `Selected channelxxx: ${result.name}, Channel ID: ${result.id}`;
+			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
+				? "https://tube.yt"
+				: "http://localhost:3003";
+
+			try {
+				await axios.post(`${baseUrl}/send-telegram-message`, { message });
+			} catch (error) {
+				console.error('Error sending message to Telegram:', error);
+			}
+
+			searchQuery.value = '';
+			searchResults.value = [];
+			showRequestModal.value = false;
+		};
+
 		onMounted(fetchAvailableChannels);
 
 		return {
 			availableChannels,
 			isLoading,
 			handleImageError,
-			getHumanReadableNumber
+			getHumanReadableNumber,
+			showRequestModal,
+			searchQuery,
+			searchResults,
+			searchError,
+			openRequestModal,
+			closeRequestModal,
+			debouncedUpdateSearchResults,
+			selectSearchResult
 		};
 	}
 };
@@ -133,4 +253,9 @@ export default {
 		text-decoration: none;
 	}
 
+	.request-btn {
+		position: fixed;
+		bottom: 20px;
+		right: 20px;
+	}
 </style>
