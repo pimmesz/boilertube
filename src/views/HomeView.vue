@@ -1,5 +1,6 @@
 <template>
 	<div class="channel-list">
+		<img src="https://placekitten.com/200/300" alt="Tube.yt logo" />
 		<v-progress-circular v-if="isLoading" indeterminate color="white"></v-progress-circular>
 		<template v-else>
 			<a
