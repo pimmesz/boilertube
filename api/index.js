@@ -92,7 +92,7 @@ const sanitizeFilename = (filename) => {
 };
 
 const getTopVideos = async (channel) => {
-  const videos = await prisma.videos.findMany({
+  const videos = await prisma.video.findMany({
     where: { channelId: channel.id },
     orderBy: { viewCount: 'desc' },
     take: 10
@@ -171,9 +171,9 @@ const updatePlaylistVideos = async (youtube, playlistId, topVideos) => {
 };
 
 const getAllVideosBetweenDates = async (channel, fromDate) => {
-  const videos = await prisma.videos.findMany({
+  const videos = await prisma.video.findMany({
     where: {
-      channelId: channel,
+      channel: channel,
       publishedAt: {
         gte: new Date(fromDate)
       }
@@ -217,7 +217,7 @@ const upsertVideosFromChannel = async (channelId) => {
         id: item.id.videoId
       });
 
-      await prisma.videos.upsert({
+      await prisma.video.upsert({
         where: { id: item.id.videoId },
         update: {
           title: item.snippet.title,

@@ -178,7 +178,7 @@ export default {
 		}, 500);
 
 		const selectSearchResult = async (result) => {
-			const message = `Selected channelxxx: ${result.name}, Channel ID: ${result.id}`;
+			const message = `Selected channel: ${result.name}, Channel ID: ${result.id}`;
 			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
 				? "https://tube.yt"
 				: "http://localhost:3003";
