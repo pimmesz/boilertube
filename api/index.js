@@ -179,7 +179,7 @@ const getAllVideosBetweenDates = async (channel, fromDate) => {
       }
     },
     orderBy: {
-      publishedAt: 'desc'
+      viewCount: 'desc'
     }
   });
   return videos;
