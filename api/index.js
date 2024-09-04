@@ -1,3 +1,7 @@
+// Check number of current Youtube API requests
+// https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=boilerbot-373414
+
+// Import necessary modules
 import express from "express";
 import http from "http";
 import cors from "cors";
@@ -5,20 +9,43 @@ import * as dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import packageJson from '../package.json' assert { type: 'json' };
 import { google } from 'googleapis';
+import axios from 'axios';
 
-// Check number of current Youtube API requests
-// https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=boilerbot-373414
+// Load environment variables
+dotenv.config();
 
+// Initialize Prisma client
 const prisma = new PrismaClient();
+
+// Set up Express app
 const app = express();
 const port = process.env.PORT || 3003;
 
-const { CLIENT_EXPIRATION_DATE, CLIENT_REFRESH_TOKEN, CLIENT_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI } = process.env;
+// Middleware
+app.use(express.json());
+app.use(cors());
 
-const { OAuth2 } = google.auth;
+// Environment variables
+const {
+  CLIENT_EXPIRATION_DATE,
+  CLIENT_REFRESH_TOKEN,
+  CLIENT_TOKEN,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI,
+  TELEGRAM_API_KEY,
+  TELEGRAM_CHAT_ID
+} = process.env;
+
+// Constants
 const SCOPE = 'https://www.googleapis.com/auth/youtube';
 
-const oauth2Client = new OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+// Set up OAuth2 client
+const oauth2Client = new google.auth.OAuth2(
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI
+);
 
 if (!CLIENT_EXPIRATION_DATE) {
   throw new Error('The token expiration date is required');
@@ -34,7 +61,6 @@ const credentials = {
 
 oauth2Client.setCredentials(credentials);
 
-// Set up token refresh mechanism
 oauth2Client.on('tokens', (tokens) => {
   if (tokens.refresh_token) {
     process.env.CLIENT_REFRESH_TOKEN = tokens.refresh_token;
@@ -45,130 +71,204 @@ oauth2Client.on('tokens', (tokens) => {
   oauth2Client.setCredentials(tokens);
 });
 
-app.use(express.json());
-app.use(cors());
-dotenv.config();
-
-// Serialize BigInt to String
+// Utility functions
 BigInt.prototype.toJSON = function() { return this.toString() };
 
-// Endpoints
+const getYoutubeClient = async () => {
+  const freshCredentials = await oauth2Client.getAccessToken();
+  if (!freshCredentials || !freshCredentials.token) {
+    throw new Error('Failed to obtain fresh access token');
+  }
+  oauth2Client.setCredentials({ access_token: freshCredentials.token });
+  return google.youtube({ version: 'v3', auth: oauth2Client });
+};
+
+const sanitizeFilename = (filename) => {
+  return filename
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+};
+
+const getTopVideos = async (channel) => {
+  const videos = await prisma.videos.findMany({
+    where: { channelId: channel.id },
+    orderBy: { viewCount: 'desc' },
+    take: 10
+  });
+  return videos;
+};
+
+const getPlaylistTitle = (topVideos, channel) => {
+  return `Top 10 Videos - ${channel.title}`;
+};
+
+const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
+  try {
+    const response = await youtube.playlists.list({
+      part: 'snippet',
+      channelId: channel.id,
+      maxResults: 50
+    });
+
+    const existingPlaylist = response.data.items.find(playlist => playlist.snippet.title === playlistTitle);
+
+    if (existingPlaylist) {
+      return existingPlaylist.id;
+    } else {
+      const newPlaylist = await youtube.playlists.insert({
+        part: 'snippet',
+        requestBody: {
+          snippet: {
+            title: playlistTitle,
+            description: `Top 10 videos from ${channel.title}`
+          }
+        }
+      });
+      return newPlaylist.data.id;
+    }
+  } catch (error) {
+    console.error('Error in getOrCreatePlaylist:', error);
+    throw error;
+  }
+};
+
+const updatePlaylistVideos = async (youtube, playlistId, topVideos) => {
+  try {
+    // Clear existing items in the playlist
+    const existingItems = await youtube.playlistItems.list({
+      part: 'id',
+      playlistId: playlistId,
+      maxResults: 50
+    });
+
+    for (const item of existingItems.data.items) {
+      await youtube.playlistItems.delete({
+        id: item.id
+      });
+    }
+
+    // Add new items to the playlist
+    for (const video of topVideos) {
+      await youtube.playlistItems.insert({
+        part: 'snippet',
+        requestBody: {
+          snippet: {
+            playlistId: playlistId,
+            resourceId: {
+              kind: 'youtube#video',
+              videoId: video.id
+            }
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error in updatePlaylistVideos:', error);
+    throw error;
+  }
+};
+
+const getAllVideosBetweenDates = async (channel, fromDate) => {
+  const videos = await prisma.videos.findMany({
+    where: {
+      channelId: channel,
+      publishedAt: {
+        gte: new Date(fromDate)
+      }
+    },
+    orderBy: {
+      publishedAt: 'desc'
+    }
+  });
+  return videos;
+};
+
+const refreshOldestChannelData = async () => {
+  const oldestChannel = await prisma.channels.findFirst({
+    orderBy: {
+      updatedAt: 'asc'
+    }
+  });
+
+  if (oldestChannel) {
+    await upsertVideosFromChannel(oldestChannel.id);
+  }
+};
+
+const upsertVideosFromChannel = async (channelId) => {
+  const youtube = await getYoutubeClient();
+  let nextPageToken = '';
+
+  do {
+    const response = await youtube.search.list({
+      part: 'snippet',
+      channelId: channelId,
+      maxResults: 50,
+      order: 'date',
+      type: 'video',
+      pageToken: nextPageToken
+    });
+
+    for (const item of response.data.items) {
+      const videoDetails = await youtube.videos.list({
+        part: 'statistics,contentDetails',
+        id: item.id.videoId
+      });
+
+      await prisma.videos.upsert({
+        where: { id: item.id.videoId },
+        update: {
+          title: item.snippet.title,
+          description: item.snippet.description,
+          thumbnails: JSON.stringify(item.snippet.thumbnails),
+          publishedAt: new Date(item.snippet.publishedAt),
+          viewCount: BigInt(videoDetails.data.items[0].statistics.viewCount || 0),
+          likeCount: BigInt(videoDetails.data.items[0].statistics.likeCount || 0),
+          duration: videoDetails.data.items[0].contentDetails.duration
+        },
+        create: {
+          id: item.id.videoId,
+          channelName: item.snippet.channelTitle,
+          subdomain: sanitizeFilename(item.snippet.channelTitle),
+          channelId: channelId,
+          title: item.snippet.title,
+          description: item.snippet.description,
+          thumbnails: JSON.stringify(item.snippet.thumbnails),
+          publishedAt: new Date(item.snippet.publishedAt),
+          viewCount: BigInt(videoDetails.data.items[0].statistics.viewCount || 0),
+          likeCount: BigInt(videoDetails.data.items[0].statistics.likeCount || 0),
+          duration: videoDetails.data.items[0].contentDetails.duration
+        }
+      });
+    }
+
+    nextPageToken = response.data.nextPageToken;
+  } while (nextPageToken);
+
+  await prisma.channels.update({
+    where: { id: channelId },
+    data: { updatedAt: new Date() }
+  });
+};
+
+// API Routes
 app.get("/version", (req, res) => {
   res.json({ version: packageJson.version });
 });
 
 app.get("/upsert-playlists", async (req, res) => {
   try {
-    const freshCredentials = await oauth2Client.getAccessToken();
-    if (!freshCredentials || !freshCredentials.token) {
-      throw new Error('Failed to obtain fresh access token');
-    }
-
-    oauth2Client.setCredentials({ access_token: freshCredentials.token });
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+    const youtube = await getYoutubeClient();
     const channels = await prisma.channels.findMany();
+
     for (const channel of channels) {
-      const lastMonth = new Date();
-      lastMonth.setMonth(lastMonth.getMonth() - 1);
-
-      let topVideos = await prisma.video.findMany({
-        where: { 
-          channel: channel.subdomain,
-          publishedAt: { gte: lastMonth }
-        },
-        orderBy: { viewCount: 'desc' },
-      });
-
-      let playlistTitle;
-      if (topVideos.length > 0) {
-        const topVideoCount = Math.ceil(topVideos.length * 0.2); // Get top 20%
-        topVideos = topVideos.slice(0, topVideoCount);
-        playlistTitle = `Top ${topVideoCount} Videos (Last Month) - ${channel.channelName}`;
-      } 
-			
-			if (topVideos.length < 15) {
-        const lastSixMonths = new Date();
-        lastSixMonths.setMonth(lastSixMonths.getMonth() - 3);
-
-        topVideos = await prisma.video.findMany({
-          where: { 
-            channel: channel.subdomain,
-            publishedAt: { gte: lastSixMonths }
-          },
-          orderBy: { viewCount: 'desc' },
-        });
-
-        const topVideoCount = Math.ceil(topVideos.length * 0.2); // Get top 20%
-        topVideos = topVideos.slice(0, topVideoCount);
-        playlistTitle = `Top ${topVideoCount} Videos (Last 3 Months) - ${channel.channelName}`;
-      }
-
-			console.log(topVideos.length, 'videos to be added to playlist:', playlistTitle)
-
-      const existingPlaylists = await youtube.playlists.list({
-        part: 'snippet',
-        mine: true
-      });
-
-      let playlistId = existingPlaylists.data.items.find(playlist => playlist.snippet.title === playlistTitle)?.id;
-
-      const channelThumbnails = JSON.parse(channel.thumbnails);
-
-      if (!playlistId) {
-        console.log('Creating playlist', playlistTitle);
-        const response = await youtube.playlists.insert({
-          part: 'snippet,status',
-          requestBody: {
-            snippet: {
-              title: playlistTitle,
-              description: `Top 25 videos from ${channel.channelName}`,
-              thumbnails: {
-                medium: channelThumbnails.medium
-              }
-            },
-            status: {
-              privacyStatus: 'public'
-            }
-          }
-        });
-        playlistId = response.data.id;
-      } else {
-        await youtube.playlists.update({
-          part: 'snippet',
-          requestBody: {
-            id: playlistId,
-            snippet: {
-              title: playlistTitle,
-              description: `Top 25 videos from ${channel.channelName}`,
-            }
-          }
-        });
-      }
-
-      const existingItems = await youtube.playlistItems.list({
-        part: 'snippet',
-        playlistId: playlistId,
-        maxResults: 50
-      });
-
-      const existingVideoIds = new Set(existingItems.data.items.map(item => item.snippet.resourceId.videoId));
-
-      for (const video of topVideos) {
-        if (!existingVideoIds.has(video.id)) {
-          await youtube.playlistItems.insert({
-            part: 'snippet',
-            requestBody: {
-              snippet: {
-                playlistId: playlistId,
-                resourceId: {
-                  kind: 'youtube#video',
-                  videoId: video.id
-                }
-              }
-            }
-          });
-        }
-      }
+      const topVideos = await getTopVideos(channel);
+      const playlistTitle = getPlaylistTitle(topVideos, channel);
+      
+      const playlistId = await getOrCreatePlaylist(youtube, playlistTitle, channel);
+      await updatePlaylistVideos(youtube, playlistId, topVideos);
     }
 
     res.status(200).json({ message: "Playlists created and videos added successfully" });
@@ -201,9 +301,9 @@ app.post("/send-telegram-message", async (req, res) => {
   }
 
   try {
-    const telegramApiUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_API_KEY}/sendMessage`;
+    const telegramApiUrl = `https://api.telegram.org/bot${TELEGRAM_API_KEY}/sendMessage`;
     await axios.post(telegramApiUrl, {
-      chat_id: process.env.TELEGRAM_CHAT_ID,
+      chat_id: TELEGRAM_CHAT_ID,
       text: message
     });
     res.status(200).json({ message: "Telegram message sent successfully" });
@@ -214,8 +314,9 @@ app.post("/send-telegram-message", async (req, res) => {
 
 app.get("/channels/:subdomain", async (req, res) => {
   const { subdomain } = req.params;
+  const sanitizedSubdomain = sanitizeFilename(subdomain);
   const channel = await prisma.channels.findUnique({
-    where: { subdomain },
+    where: { subdomain: sanitizedSubdomain },
   });
   res.json({ channel });
 });
@@ -223,13 +324,7 @@ app.get("/channels/:subdomain", async (req, res) => {
 app.get("/search-channels/:channelName", async (req, res) => {
   const { channelName } = req.params;
   try {
-    const freshCredentials = await oauth2Client.getAccessToken();
-    if (!freshCredentials || !freshCredentials.token) {
-      throw new Error('Failed to obtain fresh access token');
-    }
-    oauth2Client.setCredentials({ access_token: freshCredentials.token });
-
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+    const youtube = await getYoutubeClient();
     const response = await youtube.search.list({
       part: 'snippet',
       q: channelName,
@@ -266,212 +361,6 @@ app.get("/start-fill-database", async (req, res) => {
     res.status(429).json({ error: "Exceeded Youtube API quota" });
   }
 });
-
-// Functions
-async function getAllVideosBetweenDates(channel = '', fromDate = '') {
-  const videos = await prisma.video.findMany({
-    where: {
-      channel,
-      publishedAt: {
-        gte: fromDate,
-      },
-    },
-  });
-
-  return videos
-    .filter(video => video.viewCount !== 0)
-    .sort((a, b) => Number(b.viewCount) - Number(a.viewCount));
-}
-
-function sanitizeFilename(filename) {
-  return filename
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .toLowerCase();
-}
-
-async function getVideoDetails(videoId) {
-  try {
-    const freshCredentials = await oauth2Client.getAccessToken();
-    if (!freshCredentials || !freshCredentials.token) {
-      throw new Error('Failed to obtain fresh access token');
-    }
-    oauth2Client.setCredentials({ access_token: freshCredentials.token });
-
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-    const response = await youtube.videos.list({
-      part: 'statistics,snippet',
-      id: videoId
-    });
-
-    const videoDetails = response.data.items[0];
-
-    return {
-      id: videoDetails.id,
-      channel: sanitizeFilename(videoDetails.snippet.channelTitle),
-      publishedAt: videoDetails.snippet.publishedAt,
-      title: videoDetails.snippet.title,
-      thumbnails: JSON.stringify(videoDetails.snippet.thumbnails),
-      viewCount: BigInt(videoDetails.statistics.viewCount),
-    };
-  } catch (error) {
-    console.error("Error fetching video details:", error.message);
-    return null;
-  }
-}
-
-async function refreshOldestChannelData() {
-  const oldestChannel = await prisma.channels.findFirst({
-    orderBy: {
-      updatedAt: "asc",
-    },
-  });
-
-  if (oldestChannel) {
-    console.log(`Refreshing ${oldestChannel.channelName} last updated on ${oldestChannel.updatedAt}`);
-    await upsertVideosFromChannel(oldestChannel.id);
-  }
-}
-
-async function upsertVideosWithDetails(video) {
-  try {
-    await prisma.video.upsert({
-      where: { id: video.id },
-      update: {
-        viewCount: video.viewCount,
-        thumbnails: video.thumbnails,
-        channel: video.channel,
-      },
-      create: video,
-    });
-  } catch (error) {
-    console.error("upsertVideosWithDetails failed", video, error);
-  }
-}
-
-async function getVideoInfoPerYoutubePage(uploadsPlaylistId, pageToken = "", iteration = 0) {
-  console.log('Fetching video info for playlist:', uploadsPlaylistId, 'Page token:', pageToken);
-  try {
-    const freshCredentials = await oauth2Client.getAccessToken();
-    if (!freshCredentials || !freshCredentials.token) {
-      throw new Error('Failed to obtain fresh access token');
-    }
-    oauth2Client.setCredentials({ access_token: freshCredentials.token });
-
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-    const response = await youtube.playlistItems.list({
-      part: 'snippet',
-      maxResults: 50,
-      pageToken,
-      playlistId: uploadsPlaylistId
-    });
-
-    const { nextPageToken, items } = response.data;
-
-    for (const video of items) {
-      const videoDetails = await getVideoDetails(video.snippet.resourceId.videoId);
-      if (videoDetails && videoDetails.viewCount) {
-        await upsertVideosWithDetails(videoDetails);
-      }
-    }
-
-    if (nextPageToken) {
-      console.log("Fetching next page, iteration:", iteration + 1);
-      await getVideoInfoPerYoutubePage(uploadsPlaylistId, nextPageToken, iteration + 1);
-    }
-  } catch (error) {
-    console.error("Error fetching video info:", error.message);
-  }
-}
-
-async function getChannelInfoByName(channelName) {
-  const freshCredentials = await oauth2Client.getAccessToken();
-  if (!freshCredentials || !freshCredentials.token) {
-    throw new Error('Failed to obtain fresh access token');
-  }
-  oauth2Client.setCredentials({ access_token: freshCredentials.token });
-
-  const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-  const response = await youtube.channels.list({
-    part: 'snippet,contentDetails,statistics',
-    id: channelId
-  });
-
-  return response.data.items[0];
-}
-
-async function getChannelInfoById(channelId) {
-  const freshCredentials = await oauth2Client.getAccessToken();
-  if (!freshCredentials || !freshCredentials.token) {
-    throw new Error('Failed to obtain fresh access token');
-  }
-  oauth2Client.setCredentials({ access_token: freshCredentials.token });
-
-  const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-  const response = await youtube.channels.list({
-    part: 'snippet,contentDetails,statistics',
-    id: channelId
-  });
-
-  return response.data.items[0];
-}
-
-async function upsertChannelInfo(channelId) {
-  const channelInfo = await getChannelInfoById(channelId);
-  await prisma.channels.upsert({
-    where: { id: channelId },
-    update: {
-      thumbnails: JSON.stringify(channelInfo.snippet.thumbnails),
-      subscriberCount: BigInt(channelInfo.statistics.subscriberCount),
-      viewCount: BigInt(channelInfo.statistics.viewCount),
-    },
-    create: {
-      id: channelId,
-      channelName: channelInfo.snippet.title,
-      subdomain: sanitizeFilename(channelInfo.snippet.title),
-      updatedAt: new Date().toISOString(),
-      thumbnails: JSON.stringify(channelInfo.snippet.thumbnails),
-      subscriberCount: BigInt(channelInfo.statistics.subscriberCount),
-      viewCount: BigInt(channelInfo.statistics.viewCount),
-    }
-  });
-
-  return channelInfo;
-}
-
-async function setChannelUpdatedAt(channelId) {
-  await prisma.channels.update({
-    where: { id: channelId },
-    data: { updatedAt: new Date().toISOString() },
-  });
-}
-
-async function checkIfVideosAreOutdated(channelInfo) {
-  try {
-    const countYoutubeVideos = BigInt(channelInfo.statistics.videoCount);
-    const countSavedVideos = await prisma.video.count({
-      where: { channel: sanitizeFilename(channelInfo.snippet.title) },
-    });
-
-    return countSavedVideos < countYoutubeVideos;
-  } catch (error) {
-    console.error('Error checking if videos are outdated:', error.message);
-    return false;
-  }
-}
-
-async function upsertVideosFromChannel(channelId) {
-  const channelInfo = await upsertChannelInfo(channelId);
-  const areVideosOutdated = await checkIfVideosAreOutdated(channelInfo);
-  
-  if (areVideosOutdated) {
-    await setChannelUpdatedAt(channelId);
-    await getVideoInfoPerYoutubePage(channelInfo.contentDetails.relatedPlaylists.uploads);
-  } else {
-    console.log("No new videos to add to database");
-  }
-}
 
 // Start the app
 const server = http.createServer(app);
