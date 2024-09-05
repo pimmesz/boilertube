@@ -308,7 +308,12 @@ app.get("/upsert-playlists", async (req, res) => {
     const youtube = await getYoutubeClient();
     const channels = await prisma.channels.findMany();
 
-    for (const channel of channels) {
+    // Randomize the order of channels
+    const shuffledChannels = channels.sort(() => Math.random() - 0.5);
+
+    const updatedChannels = [];
+
+    for (const channel of shuffledChannels) {
       let topVideos = await getTopVideos(channel, 1);
       let timeFrame = 1;
       if (topVideos.length < 20) {
@@ -318,11 +323,18 @@ app.get("/upsert-playlists", async (req, res) => {
       const playlistTitle = getPlaylistTitle(channel, timeFrame);      
       const playlistId = await getOrCreatePlaylist(youtube, playlistTitle, channel);
       await updatePlaylistVideos(youtube, playlistId, topVideos);
+      updatedChannels.push(channel.channelName);
     }
 
-    res.status(200).json({ message: "Playlists created and videos added successfully" });
+    res.status(200).json({ 
+      message: "Playlists created and videos added successfully",
+      updatedChannels: updatedChannels
+    });
   } catch (error) {
-    res.status(500).json({ error: error.response?.data || error.message });
+    res.status(500).json({ 
+      error: error.response?.data || error.message,
+      updatedChannels: updatedChannels
+    });
   }
 });
 
