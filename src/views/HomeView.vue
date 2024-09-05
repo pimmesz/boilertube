@@ -40,7 +40,7 @@
 			</a>
 		</template>
 	</div>
-	<v-btn @click="openRequestModal" color="primary" class="request-btn">Request</v-btn>
+	<v-btn @click="openRequestModal" color="white" class="request-btn">Request</v-btn>
 	<v-dialog v-model="showRequestModal" max-width="500px">
 		<v-card>
 			<v-card-title>Request a Channel</v-card-title>

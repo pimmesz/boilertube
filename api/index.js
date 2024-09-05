@@ -91,17 +91,26 @@ const sanitizeFilename = (filename) => {
     .toLowerCase();
 };
 
-const getTopVideos = async (channel) => {
+const getTopVideos = async (channel, timeFrame = 1) => {
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - timeFrame);
+
   const videos = await prisma.video.findMany({
-    where: { channelId: channel.id },
+    where: {
+      channel: channel.subdomain,
+      publishedAt: {
+        gte: startDate
+      }
+    },
     orderBy: { viewCount: 'desc' },
-    take: 10
+    take: 20
   });
   return videos;
 };
 
-const getPlaylistTitle = (topVideos, channel) => {
-  return `Top 10 Videos - ${channel.title}`;
+const getPlaylistTitle = (channel, timeFrame) => {
+  const monthText = timeFrame === 1 ? 'month' : 'months';
+  return `Top Videos ${timeFrame} ${monthText} - ${channel.channelName}`;
 };
 
 const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
@@ -115,6 +124,19 @@ const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
     const existingPlaylist = response.data.items.find(playlist => playlist.snippet.title === playlistTitle);
 
     if (existingPlaylist) {
+      await youtube.playlists.update({
+        part: 'snippet,status',
+        requestBody: {
+          id: existingPlaylist.id,
+          snippet: {
+            title: playlistTitle,
+            description: `${playlistTitle} - updated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+          },
+          status: {
+            privacyStatus: 'public'
+          }
+        }
+      });
       return existingPlaylist.id;
     } else {
       const newPlaylist = await youtube.playlists.insert({
@@ -122,7 +144,10 @@ const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
         requestBody: {
           snippet: {
             title: playlistTitle,
-            description: `Top 10 videos from ${channel.title}`
+            description: `${playlistTitle} - updated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+          },
+          status: {
+            privacyStatus: 'public'
           }
         }
       });
@@ -136,18 +161,24 @@ const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
 
 const updatePlaylistVideos = async (youtube, playlistId, topVideos) => {
   try {
-    // Clear existing items in the playlist
-    const existingItems = await youtube.playlistItems.list({
-      part: 'id',
-      playlistId: playlistId,
-      maxResults: 50
-    });
-
-    for (const item of existingItems.data.items) {
-      await youtube.playlistItems.delete({
-        id: item.id
+    // Remove existing items from playlist
+    let nextPageToken = '';
+    do {
+      const existingItems = await youtube.playlistItems.list({
+        part: 'id',
+        playlistId: playlistId,
+        maxResults: 50,
+        pageToken: nextPageToken
       });
-    }
+
+      for (const item of existingItems.data.items) {
+        await youtube.playlistItems.delete({
+          id: item.id
+        });
+      }
+
+      nextPageToken = existingItems.data.nextPageToken;
+    } while (nextPageToken);
 
     // Add new items to the playlist
     for (const video of topVideos) {
@@ -264,9 +295,13 @@ app.get("/upsert-playlists", async (req, res) => {
     const channels = await prisma.channels.findMany();
 
     for (const channel of channels) {
-      const topVideos = await getTopVideos(channel);
-      const playlistTitle = getPlaylistTitle(topVideos, channel);
-      
+      let topVideos = await getTopVideos(channel, 1);
+      let timeFrame = 1;
+      if (topVideos.length < 20) {
+        topVideos = await getTopVideos(channel, 3);
+        timeFrame = 3;
+      }
+      const playlistTitle = getPlaylistTitle(channel, timeFrame);      
       const playlistId = await getOrCreatePlaylist(youtube, playlistTitle, channel);
       await updatePlaylistVideos(youtube, playlistId, topVideos);
     }
