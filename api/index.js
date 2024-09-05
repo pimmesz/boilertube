@@ -115,85 +115,44 @@ const getPlaylistTitle = (channel, timeFrame) => {
     return `Top videos past ${timeFrame} months - ${channel.channelName}`;
   }
 };
-const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
+const createNewPlaylist = async (youtube, playlistTitle, channel) => {
   try {
+    // Delete all existing playlists
     const response = await youtube.playlists.list({
-      part: 'snippet',
+      part: 'id',
       channelId: channel.id,
       maxResults: 50
     });
 
-    const existingPlaylists = response.data.items.filter(playlist => 
-      playlist.snippet.title.includes(channel.channelName)
-    );
-
-    if (existingPlaylists.length > 0) {
-      // Keep only one playlist and delete the rest
-      const playlistToKeep = existingPlaylists[0];
-      for (let i = 1; i < existingPlaylists.length; i++) {
-        await youtube.playlists.delete({
-          id: existingPlaylists[i].id
-        });
-      }
-
-      // Update the kept playlist
-      await youtube.playlists.update({
-        part: 'snippet,status',
-        requestBody: {
-          id: playlistToKeep.id,
-          snippet: {
-            title: playlistTitle,
-            description: `${playlistTitle} - updated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
-          },
-          status: {
-            privacyStatus: 'public'
-          }
-        }
+    for (const playlist of response.data.items) {
+      await youtube.playlists.delete({
+        id: playlist.id
       });
-      return playlistToKeep.id;
-    } else {
-      // Create a new playlist if none exist
-      const newPlaylist = await youtube.playlists.insert({
-        part: 'snippet,status',
-        requestBody: {
-          snippet: {
-            title: playlistTitle,
-            description: `${playlistTitle} - created ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
-          },
-          status: {
-            privacyStatus: 'public'
-          }
-        }
-      });
-      return newPlaylist.data.id;
     }
+
+    // Create a new playlist
+    const newPlaylist = await youtube.playlists.insert({
+      part: 'snippet,status',
+      requestBody: {
+        snippet: {
+          title: playlistTitle,
+          description: `${playlistTitle} - created ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+        },
+        status: {
+          privacyStatus: 'public'
+        }
+      }
+    });
+
+    return newPlaylist.data.id;
   } catch (error) {
-    console.error('Error in getOrCreatePlaylist:', error);
+    console.error('Error in createNewPlaylist:', error);
     throw error;
   }
 };
 
-const updatePlaylistVideos = async (youtube, playlistId, topVideos) => {
+const insertVideosInPlaylist = async (youtube, playlistId, topVideos) => {
   try {
-    // Remove existing items from playlist
-    let nextPageToken = '';
-    do {
-      const existingItems = await youtube.playlistItems.list({
-        part: 'id',
-        playlistId: playlistId,
-        maxResults: 50,
-        pageToken: nextPageToken
-      });
-
-      for (const item of existingItems.data.items) {
-        await youtube.playlistItems.delete({
-          id: item.id
-        });
-      }
-
-      nextPageToken = existingItems.data.nextPageToken;
-    } while (nextPageToken);
-
     // Add new items to the playlist
     for (const video of topVideos) {
       await youtube.playlistItems.insert({
@@ -210,7 +169,7 @@ const updatePlaylistVideos = async (youtube, playlistId, topVideos) => {
       });
     }
   } catch (error) {
-    console.error('Error in updatePlaylistVideos:', error);
+    console.error('Error in insertVideosInPlaylist:', error);
     throw error;
   }
 };
@@ -320,8 +279,8 @@ app.get("/upsert-playlists", async (req, res) => {
         timeFrame = 3;
       }
       const playlistTitle = getPlaylistTitle(channel, timeFrame);      
-      const playlistId = await getOrCreatePlaylist(youtube, playlistTitle, channel);
-      await updatePlaylistVideos(youtube, playlistId, topVideos);
+      const playlistId = await createNewPlaylist(youtube, playlistTitle, channel);
+      await insertVideosInPlaylist(youtube, playlistId, topVideos);
       updatedChannels.push(channel.channelName);
     }
 
