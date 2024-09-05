@@ -90,12 +90,12 @@ const sanitizeFilename = (filename) => {
     .replace(/[^a-zA-Z0-9]/g, "")
     .toLowerCase();
 };
-
 const getTopVideos = async (channel, timeFrame = 1) => {
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - timeFrame);
 
-  const videos = await prisma.video.findMany({
+  // First, get all videos in the timeframe
+  const allVideos = await prisma.video.findMany({
     where: {
       channel: channel.subdomain,
       publishedAt: {
@@ -103,9 +103,13 @@ const getTopVideos = async (channel, timeFrame = 1) => {
       }
     },
     orderBy: { viewCount: 'desc' },
-    take: 20
   });
-  return videos;
+
+  // Calculate the number of videos to return (25% of total)
+  const topCount = Math.ceil(allVideos.length * 0.25);
+
+  // Return the top 25% of videos
+  return allVideos.slice(0, topCount);
 };
 
 const getPlaylistTitle = (channel, timeFrame) => {
@@ -274,7 +278,7 @@ app.get("/upsert-playlists", async (req, res) => {
     for (const channel of shuffledChannels) {
       let topVideos = await getTopVideos(channel, 1);
       let timeFrame = 1;
-      if (topVideos.length < 20) {
+      if (topVideos.length < 10) {
         topVideos = await getTopVideos(channel, 3);
         timeFrame = 3;
       }
