@@ -304,14 +304,13 @@ app.get("/version", (req, res) => {
 });
 
 app.get("/upsert-playlists", async (req, res) => {
+  const updatedChannels = [];
   try {
     const youtube = await getYoutubeClient();
     const channels = await prisma.channels.findMany();
 
     // Randomize the order of channels
     const shuffledChannels = channels.sort(() => Math.random() - 0.5);
-
-    const updatedChannels = [];
 
     for (const channel of shuffledChannels) {
       let topVideos = await getTopVideos(channel, 1);
