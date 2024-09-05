@@ -47,7 +47,7 @@
           color="white"
           indeterminate
           size="64"
-          class="d-flex mx-auto"
+          class="loading-spinner"
         ></v-progress-circular>
         <template v-else>
           <div v-if="videos.length > 0" class="infinite-scroll">
@@ -320,5 +320,12 @@ onMounted(async () => {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 </style>
