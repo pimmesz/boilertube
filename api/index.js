@@ -140,7 +140,7 @@ const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
       return existingPlaylist.id;
     } else {
       const newPlaylist = await youtube.playlists.insert({
-        part: 'snippet',
+        part: 'snippet,status',
         requestBody: {
           snippet: {
             title: playlistTitle,
