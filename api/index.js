@@ -37,9 +37,6 @@ const {
   TELEGRAM_CHAT_ID
 } = process.env;
 
-// Constants
-const SCOPE = 'https://www.googleapis.com/auth/youtube';
-
 // Set up OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
@@ -55,7 +52,7 @@ const credentials = {
   access_token: CLIENT_TOKEN,
   expiry_date: +CLIENT_EXPIRATION_DATE,
   refresh_token: CLIENT_REFRESH_TOKEN,
-  scope: SCOPE,
+  scope: 'https://www.googleapis.com/auth/youtube',
   token_type: 'Bearer',
 };
 
@@ -205,6 +202,7 @@ const refreshOldestChannelData = async () => {
   }
 };
 
+
 const upsertVideosFromChannel = async (channelId) => {
   const youtube = await getYoutubeClient();
   let nextPageToken = '';
@@ -219,22 +217,24 @@ const upsertVideosFromChannel = async (channelId) => {
       pageToken: nextPageToken
     });
 
-    for (const item of response.data.items) {
-      const videoDetails = await youtube.videos.list({
-        part: 'statistics,contentDetails',
-        id: item.id.videoId
-      });
+    const videoIds = response.data.items.map(item => item.id.videoId);
+    const videoDetails = await youtube.videos.list({
+      part: 'statistics,contentDetails',
+      id: videoIds.join(',')
+    });
 
-      await prisma.video.upsert({
+    const upsertPromises = response.data.items.map((item, index) => {
+      const details = videoDetails.data.items[index];
+      return prisma.video.upsert({
         where: { id: item.id.videoId },
         update: {
           title: item.snippet.title,
           description: item.snippet.description,
           thumbnails: JSON.stringify(item.snippet.thumbnails),
           publishedAt: new Date(item.snippet.publishedAt),
-          viewCount: BigInt(videoDetails.data.items[0].statistics.viewCount || 0),
-          likeCount: BigInt(videoDetails.data.items[0].statistics.likeCount || 0),
-          duration: videoDetails.data.items[0].contentDetails.duration
+          viewCount: BigInt(details.statistics.viewCount || 0),
+          likeCount: BigInt(details.statistics.likeCount || 0),
+          duration: details.contentDetails.duration
         },
         create: {
           id: item.id.videoId,
@@ -245,12 +245,14 @@ const upsertVideosFromChannel = async (channelId) => {
           description: item.snippet.description,
           thumbnails: JSON.stringify(item.snippet.thumbnails),
           publishedAt: new Date(item.snippet.publishedAt),
-          viewCount: BigInt(videoDetails.data.items[0].statistics.viewCount || 0),
-          likeCount: BigInt(videoDetails.data.items[0].statistics.likeCount || 0),
-          duration: videoDetails.data.items[0].contentDetails.duration
+          viewCount: BigInt(details.statistics.viewCount || 0),
+          likeCount: BigInt(details.statistics.likeCount || 0),
+          duration: details.contentDetails.duration
         }
       });
-    }
+    });
+
+    await Promise.all(upsertPromises);
 
     nextPageToken = response.data.nextPageToken;
   } while (nextPageToken);
@@ -274,6 +276,9 @@ app.get("/upsert-playlists", async (req, res) => {
 
     // Randomize the order of channels
     const shuffledChannels = channels.sort(() => Math.random() - 0.5);
+
+    // Delete all existing playlists
+    await deleteAllExistingPlaylists(youtube);
 
     for (const channel of shuffledChannels) {
       let topVideos = await getTopVideos(channel, 1);
