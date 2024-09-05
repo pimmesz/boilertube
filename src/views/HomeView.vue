@@ -48,12 +48,13 @@
 				<v-text-field 
 					v-model="searchQuery" 
 					label="Search for a channel" 
-					@input="debouncedUpdateSearchResults"
+					@input="() => { isSearching = true; debouncedUpdateSearchResults(); }"
 				></v-text-field>
-				<v-alert v-if="searchError" type="error" dense>
+				<v-alert v-if="searchError && !isSearching" type="error" dense>
 					{{ searchError }}
 				</v-alert>
-				<v-list v-if="searchResults.length > 0">
+				<v-progress-circular v-if="isSearching" indeterminate color="primary"></v-progress-circular>
+				<v-list v-else-if="searchResults.length > 0">
 					<v-list-item
 						v-for="result in searchResults"
 						:key="result.id"
@@ -100,6 +101,7 @@ export default {
 		const searchQuery = ref('');
 		const searchResults = ref([]);
 		const searchError = ref('');
+		const isSearching = ref(false);
 
 		const fetchAvailableChannels = async () => {
 			const baseUrl = import.meta.env.VITE_ENVIRONMENT === "production"
@@ -149,6 +151,7 @@ export default {
 				: "http://localhost:3003";
 
 			if (searchQuery.value.trim() !== '') {
+				isSearching.value = true;
 				try {
 					const response = await axios.get(`${baseUrl}/search-channels/${encodeURIComponent(searchQuery.value)}`);
 					searchResults.value = response.data.channels.map(channel => ({
@@ -166,6 +169,8 @@ export default {
 					} else {
 						searchError.value = 'An error occurred while searching for channels';
 					}
+				} finally {
+					isSearching.value = false;
 				}
 			} else {
 				searchResults.value = [];
@@ -175,7 +180,7 @@ export default {
 
 		const debouncedUpdateSearchResults = debounce(async () => {
 			await updateSearchResults();
-		}, 500);
+		}, 1000);
 
 		const selectSearchResult = async (result) => {
 			const message = `Selected channel: ${result.name}, Channel ID: ${result.id}`;
@@ -205,6 +210,7 @@ export default {
 			searchQuery,
 			searchResults,
 			searchError,
+			isSearching,
 			openRequestModal,
 			closeRequestModal,
 			debouncedUpdateSearchResults,
