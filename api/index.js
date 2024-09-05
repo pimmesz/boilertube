@@ -109,10 +109,12 @@ const getTopVideos = async (channel, timeFrame = 1) => {
 };
 
 const getPlaylistTitle = (channel, timeFrame) => {
-  const monthText = timeFrame === 1 ? 'month' : 'months';
-  return `Top Videos ${timeFrame} ${monthText} - ${channel.channelName}`;
+  if (timeFrame === 1) {
+    return `Top videos last month - ${channel.channelName}`;
+  } else {
+    return `Top videos past ${timeFrame} months - ${channel.channelName}`;
+  }
 };
-
 const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
   try {
     const response = await youtube.playlists.list({
@@ -121,13 +123,24 @@ const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
       maxResults: 50
     });
 
-    const existingPlaylist = response.data.items.find(playlist => playlist.snippet.title === playlistTitle);
+    const existingPlaylists = response.data.items.filter(playlist => 
+      playlist.snippet.title.includes(channel.channelName)
+    );
 
-    if (existingPlaylist) {
+    if (existingPlaylists.length > 0) {
+      // Keep only one playlist and delete the rest
+      const playlistToKeep = existingPlaylists[0];
+      for (let i = 1; i < existingPlaylists.length; i++) {
+        await youtube.playlists.delete({
+          id: existingPlaylists[i].id
+        });
+      }
+
+      // Update the kept playlist
       await youtube.playlists.update({
         part: 'snippet,status',
         requestBody: {
-          id: existingPlaylist.id,
+          id: playlistToKeep.id,
           snippet: {
             title: playlistTitle,
             description: `${playlistTitle} - updated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
@@ -137,14 +150,15 @@ const getOrCreatePlaylist = async (youtube, playlistTitle, channel) => {
           }
         }
       });
-      return existingPlaylist.id;
+      return playlistToKeep.id;
     } else {
+      // Create a new playlist if none exist
       const newPlaylist = await youtube.playlists.insert({
         part: 'snippet,status',
         requestBody: {
           snippet: {
             title: playlistTitle,
-            description: `${playlistTitle} - updated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+            description: `${playlistTitle} - created ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
           },
           status: {
             privacyStatus: 'public'
