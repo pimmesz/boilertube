@@ -68,7 +68,7 @@
                       @click="openVideo(item.id)"
                     >
                       <v-img
-                        :src="item?.thumbnails?.maxres?.url ? item.thumbnails.maxres.url : item.thumbnails.default.url"
+                        :src="item?.thumbnails?.maxres?.url || item?.thumbnails?.high?.url || item?.thumbnails?.default?.url"
                         :aspect-ratio="16/9"
                         cover
                       >
@@ -130,7 +130,7 @@ const formatDate = (date: string) => {
 
 const getSubdomain = (): string => {
   if (import.meta.env.VITE_ENVIRONMENT === 'local') {
-    return 'colors';
+    return 'intercell';
   }
   const host = window.location.hostname;
   const parts = host.split('.');
@@ -250,6 +250,8 @@ onMounted(async () => {
   subdomain.value = getSubdomain();
   channel.value = await fetchChannel();
   await fetchVideos({ days: 0, weeks: 0, months: 1 });
+
+  console.log(videos.value);
 
 	if (videos.value.length < 3) {
 		await fetchVideos({ days: 0, weeks: 0, months: 3 });
