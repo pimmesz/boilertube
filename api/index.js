@@ -235,9 +235,7 @@ const upsertVideosFromChannel = async (channelId) => {
         },
         create: {
           id: item.id.videoId,
-          channelName: item.snippet.channelTitle,
-          subdomain: sanitizeFilename(item.snippet.channelTitle),
-          channelId: channelId,
+          channel: item.snippet.channelTitle,
           title: item.snippet.title,
           thumbnails: JSON.stringify(item.snippet.thumbnails),
           publishedAt: new Date(item.snippet.publishedAt),
