@@ -144,6 +144,7 @@ const fetchChannel = async () => {
 
   try {
     const response = await axios.get(`${baseUrl}/channels/${subdomain.value}`);
+    console.log('Current channel:', response.data.channel);
     return response.data.channel;
   } catch (error) {
     console.error('Error fetching channel:', error.message);
