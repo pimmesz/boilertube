@@ -200,6 +200,8 @@ const refreshOldestChannelData = async () => {
   if (oldestChannel) {
     await upsertVideosFromChannel(oldestChannel.id);
   }
+
+  return oldestChannel;
 };
 
 
@@ -370,8 +372,8 @@ app.get("/start-fill-database", async (req, res) => {
   const { channelid: channelId = '' } = req.query;
   try {
     if (!channelId) {
-      await refreshOldestChannelData();
-      res.status(200).json({ message: "Refreshed oldest channel data successfully" });
+      const oldestChannel = await refreshOldestChannelData();
+      res.status(200).json({ message: "Refreshed oldest channel data successfully", oldestChannel });
     } else {
       await upsertVideosFromChannel(channelId);
       res.status(200).json({ message: `Updated database for channel ${channelId} successfully` });
