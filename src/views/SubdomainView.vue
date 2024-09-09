@@ -250,9 +250,6 @@ onMounted(async () => {
   subdomain.value = getSubdomain();
   channel.value = await fetchChannel();
   await fetchVideos({ days: 0, weeks: 0, months: 1 });
-
-  console.log(videos.value);
-
 	if (videos.value.length < 3) {
 		await fetchVideos({ days: 0, weeks: 0, months: 3 });
 		customRangeNumberInput.value = 3;
