@@ -206,6 +206,7 @@ const refreshOldestChannelData = async () => {
 
 
 const upsertVideosFromChannel = async (channelId) => {
+  console.log('upsertVideosFromChannel', channelId);
   const youtube = await getYoutubeClient();
   let nextPageToken = '';
 
@@ -249,6 +250,7 @@ const upsertVideosFromChannel = async (channelId) => {
     await Promise.all(upsertPromises);
 
     nextPageToken = response.data.nextPageToken;
+    console.log('nextPageToken:', nextPageToken);
   } while (nextPageToken);
 
   await prisma.channels.update({
