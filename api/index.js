@@ -229,12 +229,9 @@ const upsertVideosFromChannel = async (channelId) => {
         where: { id: item.id.videoId },
         update: {
           title: item.snippet.title,
-          description: item.snippet.description,
           thumbnails: JSON.stringify(item.snippet.thumbnails),
           publishedAt: new Date(item.snippet.publishedAt),
-          viewCount: BigInt(details.statistics.viewCount || 0),
-          likeCount: BigInt(details.statistics.likeCount || 0),
-          duration: details.contentDetails.duration
+          viewCount: BigInt(details.statistics.viewCount || 0)
         },
         create: {
           id: item.id.videoId,
@@ -242,12 +239,9 @@ const upsertVideosFromChannel = async (channelId) => {
           subdomain: sanitizeFilename(item.snippet.channelTitle),
           channelId: channelId,
           title: item.snippet.title,
-          description: item.snippet.description,
           thumbnails: JSON.stringify(item.snippet.thumbnails),
           publishedAt: new Date(item.snippet.publishedAt),
-          viewCount: BigInt(details.statistics.viewCount || 0),
-          likeCount: BigInt(details.statistics.likeCount || 0),
-          duration: details.contentDetails.duration
+          viewCount: BigInt(details.statistics.viewCount || 0)
         }
       });
     });
