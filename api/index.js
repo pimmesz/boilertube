@@ -87,6 +87,7 @@ const sanitizeName = (filename) => {
     .replace(/[^a-zA-Z0-9]/g, "")
     .toLowerCase();
 };
+
 const getTopVideos = async (channel, timeFrame = 1) => {
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - timeFrame);
@@ -102,35 +103,23 @@ const getTopVideos = async (channel, timeFrame = 1) => {
     orderBy: { viewCount: 'desc' },
   });
 
-  // Calculate the number of videos to return (25% of total)
-  const topCount = Math.ceil(allVideos.length * 0.25);
+  // Calculate the number of videos to return (percentage% of total)
+  const topCount = Math.ceil(allVideos.length * (20 / 100));
 
-  // Return the top 25% of videos
+  // Return the top percentage% of videos
   return allVideos.slice(0, topCount);
 };
 
 const getPlaylistTitle = (channel, timeFrame) => {
-  if (timeFrame === 1) {
-    return `Top videos last month - ${channel.channelName}`;
+  if (timeFrame === 3) {
+    return `Top videos ${timeFrame} months - ${channel.channelName}`;
   } else {
-    return `Top videos past ${timeFrame} months - ${channel.channelName}`;
+    return `Top  videos past year - ${channel.channelName}`;
   }
 };
+
 const createNewPlaylist = async (youtube, playlistTitle, channel) => {
   try {
-    // Delete all existing playlists
-    const response = await youtube.playlists.list({
-      part: 'id',
-      channelId: channel.id,
-      maxResults: 50
-    });
-
-    for (const playlist of response.data.items) {
-      await youtube.playlists.delete({
-        id: playlist.id
-      });
-    }
-
     // Create a new playlist
     const newPlaylist = await youtube.playlists.insert({
       part: 'snippet,status',
@@ -204,6 +193,29 @@ const refreshOldestChannelData = async () => {
   return oldestChannel;
 };
 
+const deleteAllExistingPlaylists = async (youtube) => {
+  try {
+    // Get all playlists for the authenticated user
+    const response = await youtube.playlists.list({
+      part: 'id',
+      mine: true,
+      maxResults: 50 // Adjust this value if you have more playlists
+    });
+
+    // Delete each playlist
+    for (const playlist of response.data.items) {
+      await youtube.playlists.delete({
+        id: playlist.id
+      });
+      console.log(`Deleted playlist: ${playlist.id}`);
+    }
+
+    console.log('All existing playlists have been deleted');
+  } catch (error) {
+    console.error('Error in deleteAllExistingPlaylists:', error);
+    throw error;
+  }
+};
 
 const upsertVideosFromChannel = async (channelId) => {
   console.log('upsertVideosFromChannel', channelId);
@@ -275,24 +287,23 @@ app.get("/upsert-playlists", async (req, res) => {
   const updatedChannels = [];
   try {
     const youtube = await getYoutubeClient();
+    // Delete all existing playlists
+    await deleteAllExistingPlaylists(youtube);
+
+    // Get all channels
     const channels = await prisma.channels.findMany();
 
     // Randomize the order of channels
     const shuffledChannels = channels.sort(() => Math.random() - 0.5);
 
-    // Delete all existing playlists
-    await deleteAllExistingPlaylists(youtube);
-
     for (const channel of shuffledChannels) {
-      let topVideos = await getTopVideos(channel, 1);
-      let timeFrame = 1;
-      if (topVideos.length < 10) {
-        topVideos = await getTopVideos(channel, 3);
-        timeFrame = 3;
+      // Create two playlists for each channel
+      for (const timeFrame of [3, 12]) {
+        let topVideos = await getTopVideos(channel, timeFrame);
+        const playlistTitle = getPlaylistTitle(channel, timeFrame);      
+        const playlistId = await createNewPlaylist(youtube, playlistTitle, channel);
+        await insertVideosInPlaylist(youtube, playlistId, topVideos);
       }
-      const playlistTitle = getPlaylistTitle(channel, timeFrame);      
-      const playlistId = await createNewPlaylist(youtube, playlistTitle, channel);
-      await insertVideosInPlaylist(youtube, playlistId, topVideos);
       updatedChannels.push(channel.channelName);
     }
 
