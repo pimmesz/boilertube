@@ -251,7 +251,7 @@ const upsertVideosFromChannel = async (channelId) => {
 
     const upsertedVideos = await Promise.all(upsertPromises);
     allUpsertedVideos = allUpsertedVideos.concat(upsertedVideos);
-    console.log('Upserted videos progress:', allUpsertedVideos.length);
+    console.log('Upserted videos progress: ', allUpsertedVideos.length, ' for channel: ', channelId);
 
     nextPageToken = response.data.nextPageToken;
   } while (nextPageToken);
