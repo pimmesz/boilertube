@@ -211,6 +211,13 @@ const upsertVideosFromChannel = async (channelId) => {
   let nextPageToken = '';
   let allUpsertedVideos = [];
 
+  await prisma.channels.update({
+    where: { id: channelId },
+    data: { 
+      updatedAt: new Date().toISOString(),
+    }
+  });
+
   do {
     const response = await youtube.playlistItems.list({
       part: 'snippet',
@@ -255,11 +262,6 @@ const upsertVideosFromChannel = async (channelId) => {
 
     nextPageToken = response.data.nextPageToken;
   } while (nextPageToken);
-
-  await prisma.channels.update({
-    where: { id: channelId },
-    data: { updatedAt: new Date() }
-  });
 
   return allUpsertedVideos;
 };
