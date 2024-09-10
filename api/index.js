@@ -80,7 +80,7 @@ const getYoutubeClient = async () => {
   return google.youtube({ version: 'v3', auth: oauth2Client });
 };
 
-const sanitizeFilename = (filename) => {
+const sanitizeName = (filename) => {
   return filename
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -209,18 +209,17 @@ const upsertVideosFromChannel = async (channelId) => {
   console.log('upsertVideosFromChannel', channelId);
   const youtube = await getYoutubeClient();
   let nextPageToken = '';
+  let allUpsertedVideos = [];
 
   do {
-    const response = await youtube.search.list({
+    const response = await youtube.playlistItems.list({
       part: 'snippet',
-      channelId: channelId,
+      playlistId: `UU${channelId.substring(2)}`,
       maxResults: 50,
-      order: 'date',
-      type: 'video',
       pageToken: nextPageToken
     });
 
-    const videoIds = response.data.items.map(item => item.id.videoId);
+    const videoIds = response.data.items.map(item => item.snippet.resourceId.videoId);
     const videoDetails = await youtube.videos.list({
       part: 'statistics,contentDetails',
       id: videoIds.join(',')
@@ -229,34 +228,40 @@ const upsertVideosFromChannel = async (channelId) => {
     const upsertPromises = response.data.items.map((item, index) => {
       const details = videoDetails.data.items[index];
       return prisma.video.upsert({
-        where: { id: item.id.videoId },
+        where: { id: item.snippet.resourceId.videoId },
         update: {
-          title: item.snippet.title,
-          thumbnails: JSON.stringify(item.snippet.thumbnails),
+          channel: sanitizeName(item.snippet.videoOwnerChannelTitle),
+          channelId: item.snippet.videoOwnerChannelId,
           publishedAt: new Date(item.snippet.publishedAt),
+          thumbnails: JSON.stringify(item.snippet.thumbnails),
+          title: item.snippet.title,
           viewCount: BigInt(details.statistics.viewCount || 0)
         },
         create: {
-          id: item.id.videoId,
-          channel: item.snippet.channelTitle,
-          title: item.snippet.title,
-          thumbnails: JSON.stringify(item.snippet.thumbnails),
+          channel: sanitizeName(item.snippet.channelTitle),
+          channelId: item.snippet.videoOwnerChannelId,
+          id: item.snippet.resourceId.videoId,
           publishedAt: new Date(item.snippet.publishedAt),
+          thumbnails: JSON.stringify(item.snippet.thumbnails),
+          title: item.snippet.title,
           viewCount: BigInt(details.statistics.viewCount || 0)
         }
       });
     });
 
-    await Promise.all(upsertPromises);
+    const upsertedVideos = await Promise.all(upsertPromises);
+    allUpsertedVideos = allUpsertedVideos.concat(upsertedVideos);
+    console.log('Upserted videos progress:', allUpsertedVideos.length);
 
     nextPageToken = response.data.nextPageToken;
-    console.log('nextPageToken:', nextPageToken);
   } while (nextPageToken);
 
   await prisma.channels.update({
     where: { id: channelId },
     data: { updatedAt: new Date() }
   });
+
+  return allUpsertedVideos;
 };
 
 // API Routes
@@ -338,7 +343,7 @@ app.post("/send-telegram-message", async (req, res) => {
 
 app.get("/channels/:subdomain", async (req, res) => {
   const { subdomain } = req.params;
-  const sanitizedSubdomain = sanitizeFilename(subdomain);
+  const sanitizedSubdomain = sanitizeName(subdomain);
   const channel = await prisma.channels.findUnique({
     where: { subdomain: sanitizedSubdomain },
   });
@@ -377,8 +382,8 @@ app.get("/start-fill-database", async (req, res) => {
       const oldestChannel = await refreshOldestChannelData();
       res.status(200).json({ message: "Refreshed oldest channel data successfully", oldestChannel });
     } else {
-      await upsertVideosFromChannel(channelId);
-      res.status(200).json({ message: `Updated database for channel ${channelId} successfully` });
+      const allUpsertedVideos = await upsertVideosFromChannel(channelId);
+      res.status(200).json({ message: `Updated database for channel ${channelId} successfully with ${allUpsertedVideos.length} videos` });
     }
   } catch (error) {
     console.error(error);

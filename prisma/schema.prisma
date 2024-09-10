@@ -24,5 +24,6 @@ model Video {
   title       String @default("no_value")
   thumbnails  String @default("no_value")
   channel     String @default("no_value")
+  channelId   String @default("no_value")
   viewCount   BigInt @default(0)
 }
