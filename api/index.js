@@ -114,7 +114,7 @@ const getPlaylistTitle = (channel, timeFrame) => {
   if (timeFrame === 3) {
     return `Top videos ${timeFrame} months - ${channel.channelName}`;
   } else {
-    return `Top  videos past year - ${channel.channelName}`;
+    return `Top videos past year - ${channel.channelName}`;
   }
 };
 
