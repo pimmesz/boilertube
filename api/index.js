@@ -118,7 +118,7 @@ const getPlaylistTitle = (channel, timeFrame) => {
   }
 };
 
-const createNewPlaylist = async (youtube, playlistTitle, channel) => {
+const createNewPlaylist = async (youtube, playlistTitle) => {
   try {
     // Create a new playlist
     const newPlaylist = await youtube.playlists.insert({
@@ -301,7 +301,7 @@ app.get("/upsert-playlists", async (req, res) => {
       for (const timeFrame of [3, 12]) {
         let topVideos = await getTopVideos(channel, timeFrame);
         const playlistTitle = getPlaylistTitle(channel, timeFrame);      
-        const playlistId = await createNewPlaylist(youtube, playlistTitle, channel);
+        const playlistId = await createNewPlaylist(youtube, playlistTitle);
         await insertVideosInPlaylist(youtube, playlistId, topVideos);
       }
       updatedChannels.push(channel.channelName);
