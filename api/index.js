@@ -87,11 +87,18 @@ const getYoutubeClient = async () => {
       throw new Error('No refresh token is set');
     }
     const freshCredentials = await oauth2Client.refreshAccessToken();
-    console.log('Fresh credentials', freshCredentials);
     if (!freshCredentials || !freshCredentials.credentials.access_token) {
       throw new Error('Failed to refresh access token');
     }
     oauth2Client.setCredentials(freshCredentials.credentials);
+    
+    // Update environment variables with fresh credentials
+    process.env.CLIENT_TOKEN = freshCredentials.credentials.access_token;
+    process.env.CLIENT_EXPIRATION_DATE = freshCredentials.credentials.expiry_date;
+    if (freshCredentials.credentials.refresh_token) {
+      process.env.CLIENT_REFRESH_TOKEN = freshCredentials.credentials.refresh_token;
+    }
+    
     return google.youtube({ version: 'v3', auth: oauth2Client });
   } catch (error) {
     console.error('Error refreshing OAuth token:', error);
