@@ -4,6 +4,10 @@
 // Info about Youtube API oauth2
 // https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps#node.js
 // https://blog.tericcabrel.com/youtube-data-api-v3-key-nodejs/
+// https://github.com/googleapis/google-api-nodejs-client
+
+// Permission overview
+// https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps#overview
 
 // Import necessary modules
 import express from "express";
@@ -429,9 +433,8 @@ app.get("/start-fill-database", async (req, res) => {
 app.get('/generate-token', async (req, res) => {
   try {
     const authUrl = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: credentials.scope,
-      prompt: 'consent'
+      access_type: credentials.access_type,
+      scope: credentials.scope
     });
 
     res.redirect(authUrl);
@@ -459,8 +462,7 @@ app.get('/oauth2callback', async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
-    // Store tokens securely (e.g., in database)
-    // Update environment variables
+    console.log('Set tokens in environment variables', tokens);
     process.env.CLIENT_TOKEN = tokens.access_token;
     process.env.CLIENT_REFRESH_TOKEN = tokens.refresh_token;
     process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
