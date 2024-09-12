@@ -440,7 +440,8 @@ app.get('/oauth2callback', async (req, res) => {
   const { code } = req.query;
   try {
     if (!code) {
-      throw new Error('No authorization code provided');
+      console.error('No authorization code provided in query parameters');
+      return res.status(400).send('No authorization code provided. Please try the authentication process again.');
     }
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
@@ -451,7 +452,7 @@ app.get('/oauth2callback', async (req, res) => {
     process.env.CLIENT_REFRESH_TOKEN = tokens.refresh_token;
     process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
 
-    res.send('Authentication successful! You can close this window.', tokens);
+    res.send('Authentication successful! You can close this window.');
   } catch (error) {
     console.error('Error with OAuth callback:', error);
     res.status(500).send('Authentication failed: ' + error.message);
