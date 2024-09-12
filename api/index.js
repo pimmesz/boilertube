@@ -79,6 +79,9 @@ BigInt.prototype.toJSON = function() { return this.toString() };
 
 const getYoutubeClient = async () => {
   try {
+    if (!oauth2Client.credentials.refresh_token) {
+      throw new Error('No refresh token is set');
+    }
     const freshCredentials = await oauth2Client.refreshAccessToken();
     if (!freshCredentials || !freshCredentials.credentials.access_token) {
       throw new Error('Failed to refresh access token');
@@ -87,7 +90,7 @@ const getYoutubeClient = async () => {
     return google.youtube({ version: 'v3', auth: oauth2Client });
   } catch (error) {
     console.error('Error refreshing OAuth token:', error);
-    throw new Error('Authentication failed. Unable to refresh OAuth token.');
+    throw new Error(`Authentication failed. ${error.message}`);
   }
 };
 
