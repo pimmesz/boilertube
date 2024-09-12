@@ -436,13 +436,21 @@ app.get('/generate-token', async (req, res) => {
 });
 
 // OAuth2 callback endpoint
+// OAuth2 callback endpoint
 app.get('/oauth2callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, error } = req.query;
+  
+  if (error) {
+    console.error('OAuth error:', error);
+    return res.status(400).send(`OAuth error: ${error}`);
+  }
+  
+  if (!code) {
+    console.error('No authorization code provided in query parameters');
+    return res.status(400).send('No authorization code provided. Please try the authentication process again.');
+  }
+  
   try {
-    if (!code) {
-      console.error('No authorization code provided in query parameters');
-      return res.status(400).send('No authorization code provided. Please try the authentication process again.');
-    }
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
@@ -454,8 +462,8 @@ app.get('/oauth2callback', async (req, res) => {
 
     res.send('Authentication successful! You can close this window.');
   } catch (error) {
-    console.error('Error with OAuth callback:', error);
-    res.status(500).send('Authentication failed: ' + error.message);
+    console.error('Error exchanging code for tokens:', error);
+    res.status(500).send(`Authentication failed: ${error.message}`);
   }
 });
 
