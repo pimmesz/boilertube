@@ -3,6 +3,7 @@
 
 // Info about Youtube API oauth2
 // https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps#node.js
+// https://blog.tericcabrel.com/youtube-data-api-v3-key-nodejs/
 
 // Import necessary modules
 import express from "express";
@@ -43,6 +44,7 @@ const {
 const GOOGLE_REDIRECT_URI = process.env.VITE_ENVIRONMENT === 'local' 
   ? `http://localhost:${port}/oauth2callback`
   : 'https://tube.yt/oauth2callback';
+
 const oauth2Client = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
@@ -420,6 +422,9 @@ app.get('/oauth2callback', async (req, res) => {
   const { code } = req.query;
   console.log('oauth2callback', code);
   try {
+    if (!code) {
+      throw new Error('No authorization code provided');
+    }
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
@@ -429,10 +434,10 @@ app.get('/oauth2callback', async (req, res) => {
     process.env.CLIENT_REFRESH_TOKEN = tokens.refresh_token;
     process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
 
-    res.send('Authentication successful! You can close this window.', code);
+    res.send('Authentication successful! You can close this window.');
   } catch (error) {
     console.error('Error with OAuth callback:', error);
-    res.status(500).send('Authentication failed');
+    res.status(500).send('Authentication failed: ' + error.message);
   }
 });
 
