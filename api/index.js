@@ -466,7 +466,7 @@ app.get('/oauth2callback', async (req, res) => {
     process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
 
     // Send a success response without including the tokens in the response
-    res.status(200).send('Authentication successful! You can close this window.', tokens);
+    res.status(200).send('Authentication successful! You can close this window. Tokens: ' + JSON.stringify(tokens));
   } catch (error) {
     console.error('Error exchanging code for tokens:', error);
     res.status(500).send(`Authentication failed: ${error.message}`);
