@@ -41,9 +41,7 @@ const {
 } = process.env;
 
 // Set up OAuth2 client
-const GOOGLE_REDIRECT_URI = process.env.VITE_ENVIRONMENT === 'local' 
-  ? `http://localhost:${port}/oauth2callback`
-  : 'https://tube.yt/oauth2callback';
+const GOOGLE_REDIRECT_URI = 'https://tube.yt/oauth2callback';
 
 const oauth2Client = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
@@ -418,9 +416,24 @@ app.get("/start-fill-database", async (req, res) => {
 });
 
 // OAuth2 callback endpoint
+app.get('/generate-token', async (req, res) => {
+  try {
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: credentials.scope,
+      prompt: 'consent'
+    });
+    console.log('authUrl', authUrl);
+
+    res.redirect(authUrl);
+  } catch (error) {
+    console.error('Error generating OAuth URL:', error);
+    res.status(500).send('Failed to generate authentication URL: ' + error.message);
+  }
+});
+
+// OAuth2 callback endpoint
 app.get('/oauth2callback', async (req, res) => {
-  const { code } = req.query;
-  console.log('oauth2callback', code);
   try {
     if (!code) {
       throw new Error('No authorization code provided');
