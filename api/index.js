@@ -323,14 +323,19 @@ app.get("/upsert-playlists", async (req, res) => {
     const shuffledChannels = channels.sort(() => Math.random() - 0.5);
 
     for (const channel of shuffledChannels) {
-      // Create two playlists for each channel
-      for (const timeFrame of [3, 12]) {
-        let topVideos = await getTopVideos(channel, timeFrame);
-        const playlistTitle = getPlaylistTitle(channel, timeFrame);      
-        const playlistId = await createNewPlaylist(youtube, playlistTitle);
-        await insertVideosInPlaylist(youtube, playlistId, topVideos);
+      try {
+        // Create two playlists for each channel
+        for (const timeFrame of [3, 12]) {
+          let topVideos = await getTopVideos(channel, timeFrame);
+          const playlistTitle = getPlaylistTitle(channel, timeFrame);      
+          const playlistId = await createNewPlaylist(youtube, playlistTitle);
+          await insertVideosInPlaylist(youtube, playlistId, topVideos);
+        }
+        updatedChannels.push(channel.channelName);
+      } catch (channelError) {
+        console.error(`Error processing channel ${channel.channelName}:`, channelError);
+        // Continue with the next channel
       }
-      updatedChannels.push(channel.channelName);
     }
 
     res.status(200).json({ 
@@ -338,8 +343,21 @@ app.get("/upsert-playlists", async (req, res) => {
       updatedChannels: updatedChannels
     });
   } catch (error) {
+    console.error('Error in upsert-playlists:', error);
     res.status(500).json({ 
-      error: error.response?.data || error.message,
+      error: {
+        error: error.response?.data || {
+          code: error.code || 500,
+          message: error.message || "An unexpected error occurred",
+          errors: [
+            {
+              domain: "youtube.CoreErrorDomain",
+              reason: error.reason || "UNKNOWN_ERROR"
+            }
+          ],
+          status: error.status || "INTERNAL_SERVER_ERROR"
+        }
+      },
       updatedChannels: updatedChannels
     });
   }
