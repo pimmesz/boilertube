@@ -87,6 +87,7 @@ const getYoutubeClient = async () => {
       throw new Error('No refresh token is set');
     }
     const freshCredentials = await oauth2Client.refreshAccessToken();
+    console.log('FreshCredentials', freshCredentials);
     if (!freshCredentials || !freshCredentials.credentials.access_token) {
       throw new Error('Failed to refresh access token');
     }
