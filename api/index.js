@@ -436,7 +436,6 @@ app.get('/generate-token', async (req, res) => {
 });
 
 // OAuth2 callback endpoint
-// OAuth2 callback endpoint
 app.get('/oauth2callback', async (req, res) => {
   const { code, error } = req.query;
   
