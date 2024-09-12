@@ -83,9 +83,6 @@ BigInt.prototype.toJSON = function() { return this.toString() };
 
 const getYoutubeClient = async () => {
   try {
-    if (!oauth2Client.credentials.refresh_token) {
-      throw new Error('No refresh token is set');
-    }
     const freshCredentials = await oauth2Client.refreshAccessToken();
     console.log('FreshCredentials', freshCredentials);
     if (!freshCredentials || !freshCredentials.credentials.access_token) {
