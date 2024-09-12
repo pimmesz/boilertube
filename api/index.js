@@ -90,6 +90,9 @@ const getYoutubeClient = async () => {
     return google.youtube({ version: 'v3', auth: oauth2Client });
   } catch (error) {
     console.error('Error refreshing OAuth token:', error);
+    if (error.response && error.response.data && error.response.data.error === 'invalid_grant') {
+      throw new Error('Authentication failed. The refresh token is invalid or has been revoked. Please re-authenticate.');
+    }
     throw new Error(`Authentication failed. ${error.message}`);
   }
 };
@@ -414,7 +417,11 @@ app.get("/start-fill-database", async (req, res) => {
     }
   } catch (error) {
     console.error(error);
-    res.status(429).json({ error: "Exceeded Youtube API quota" });
+    if (error.message.includes('The refresh token is invalid or has been revoked')) {
+      res.status(401).json({ error: "Authentication failed. Please re-authenticate." });
+    } else {
+      res.status(429).json({ error: "Exceeded Youtube API quota" });
+    }
   }
 });
 
