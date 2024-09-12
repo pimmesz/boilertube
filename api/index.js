@@ -1,6 +1,9 @@
 // Check number of current Youtube API requests
 // https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=boilerbot-373414
 
+// Info about Youtube API oauth2
+// https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps#node.js
+
 // Import necessary modules
 import express from "express";
 import http from "http";
@@ -32,12 +35,14 @@ const {
   CLIENT_TOKEN,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
-  GOOGLE_REDIRECT_URI,
   TELEGRAM_API_KEY,
   TELEGRAM_CHAT_ID
 } = process.env;
 
 // Set up OAuth2 client
+const GOOGLE_REDIRECT_URI = process.env.VITE_ENVIRONMENT === 'local' 
+  ? `http://localhost:${port}/oauth2callback`
+  : 'https://tube.yt/oauth2callback';
 const oauth2Client = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
@@ -54,6 +59,7 @@ const credentials = {
   refresh_token: CLIENT_REFRESH_TOKEN,
   scope: 'https://www.googleapis.com/auth/youtube',
   token_type: 'Bearer',
+  access_type: 'offline'
 };
 
 oauth2Client.setCredentials(credentials);
@@ -72,12 +78,17 @@ oauth2Client.on('tokens', (tokens) => {
 BigInt.prototype.toJSON = function() { return this.toString() };
 
 const getYoutubeClient = async () => {
-  const freshCredentials = await oauth2Client.getAccessToken();
-  if (!freshCredentials || !freshCredentials.token) {
-    throw new Error('Failed to obtain fresh access token');
+  try {
+    const freshCredentials = await oauth2Client.refreshAccessToken();
+    if (!freshCredentials || !freshCredentials.credentials.access_token) {
+      throw new Error('Failed to refresh access token');
+    }
+    oauth2Client.setCredentials(freshCredentials.credentials);
+    return google.youtube({ version: 'v3', auth: oauth2Client });
+  } catch (error) {
+    console.error('Error refreshing OAuth token:', error);
+    throw new Error('Authentication failed. Unable to refresh OAuth token.');
   }
-  oauth2Client.setCredentials({ access_token: freshCredentials.token });
-  return google.youtube({ version: 'v3', auth: oauth2Client });
 };
 
 const sanitizeName = (filename) => {
@@ -401,6 +412,27 @@ app.get("/start-fill-database", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(429).json({ error: "Exceeded Youtube API quota" });
+  }
+});
+
+// OAuth2 callback endpoint
+app.get('/oauth2callback', async (req, res) => {
+  const { code } = req.query;
+  console.log('oauth2callback', code);
+  try {
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    // Store tokens securely (e.g., in database)
+    // Update environment variables
+    process.env.CLIENT_TOKEN = tokens.access_token;
+    process.env.CLIENT_REFRESH_TOKEN = tokens.refresh_token;
+    process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
+
+    res.send('Authentication successful! You can close this window.');
+  } catch (error) {
+    console.error('Error with OAuth callback:', error);
+    res.status(500).send('Authentication failed');
   }
 });
 
