@@ -7,7 +7,7 @@
 // https://github.com/googleapis/google-api-nodejs-client
 
 // Permission overview
-// https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps#overview
+// https://myaccount.google.com/connections?continue=https%3A%2F%2Fmyaccount.google.com%2Fsecurity
 
 // Import necessary modules
 import express from "express";
@@ -84,6 +84,7 @@ BigInt.prototype.toJSON = function() { return this.toString() };
 const getYoutubeClient = async () => {
   try {
     const freshCredentials = await oauth2Client.refreshAccessToken();
+    console.log('freshCredentials here here here xxx', freshCredentials);
     if (!freshCredentials || !freshCredentials.credentials.access_token) {
       throw new Error('Failed to refresh access token');
     }
