@@ -83,20 +83,25 @@ BigInt.prototype.toJSON = function() { return this.toString() };
 
 const getYoutubeClient = async () => {
   try {
-    const freshCredentials = await oauth2Client.refreshAccessToken();
-    console.log('freshCredentials here here here xxx', freshCredentials);
-    if (!freshCredentials || !freshCredentials.credentials.access_token) {
-      throw new Error('Failed to refresh access token');
-    }
-    oauth2Client.setCredentials(freshCredentials.credentials);
-    
-    // Update environment variables with fresh credentials
-    process.env.CLIENT_TOKEN = freshCredentials.credentials.access_token;
-    process.env.CLIENT_EXPIRATION_DATE = freshCredentials.credentials.expiry_date;
-    if (freshCredentials.credentials.refresh_token) {
-      process.env.CLIENT_REFRESH_TOKEN = freshCredentials.credentials.refresh_token;
-    }
-    
+    // Refresh the access token
+    oauth2Client.refreshAccessToken((err, tokens) => {
+      if (err) {
+        console.error('Error refreshing access token:', err);
+        return;
+      }
+      // Save the new access token
+      console.log('tokens here here here xxx', tokens);
+      oauth2Client.setCredentials(tokens);
+      // Proceed with your API calls
+
+      // Update environment variables with fresh credentials
+      process.env.CLIENT_TOKEN = tokens.credentials.access_token;
+      process.env.CLIENT_EXPIRATION_DATE = tokens.credentials.expiry_date;
+      if (tokens.credentials.refresh_token) {
+        process.env.CLIENT_REFRESH_TOKEN = tokens.credentials.refresh_token;
+      }
+    });
+
     return google.youtube({ version: 'v3', auth: oauth2Client });
   } catch (error) {
     console.error('Error refreshing OAuth token:', error);
@@ -458,7 +463,8 @@ app.get('/generate-token', async (req, res) => {
   try {
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: credentials.access_type,
-      scope: credentials.scope
+      scope: credentials.scope,
+      prompt: 'consent'
     });
 
     res.redirect(authUrl);
