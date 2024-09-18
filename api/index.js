@@ -89,16 +89,15 @@ const getYoutubeClient = async () => {
         console.error('Error refreshing access token:', err);
         return;
       }
+      
       // Save the new access token
-      console.log('tokens here here here xxx', tokens);
       oauth2Client.setCredentials(tokens);
-      // Proceed with your API calls
 
       // Update environment variables with fresh credentials
-      process.env.CLIENT_TOKEN = tokens.credentials.access_token;
-      process.env.CLIENT_EXPIRATION_DATE = tokens.credentials.expiry_date;
-      if (tokens.credentials.refresh_token) {
-        process.env.CLIENT_REFRESH_TOKEN = tokens.credentials.refresh_token;
+      process.env.CLIENT_TOKEN = tokens.access_token;
+      process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
+      if (tokens.refresh_token) {
+        process.env.CLIENT_REFRESH_TOKEN = tokens.refresh_token;
       }
     });
 
@@ -135,11 +134,11 @@ const getTopVideos = async (channel, timeFrame = 1) => {
     orderBy: { viewCount: 'desc' },
   });
 
-  // Calculate the number of videos to return (percentage% of total)
-  const topCount = Math.ceil(allVideos.length * (20 / 100));
+  // Calculate the number of videos to return (20% of total)
+  const topCount = Math.ceil(allVideos.length * 0.2);
 
-  // Return the top percentage% of videos
-  return allVideos.slice(0, topCount);
+  // Return the top 20% of videos, but no more than 20
+  return allVideos.slice(0, Math.min(topCount, 20));
 };
 
 const getPlaylistTitle = (channel, timeFrame) => {
@@ -150,7 +149,7 @@ const getPlaylistTitle = (channel, timeFrame) => {
   }
 };
 
-const createNewPlaylist = async (youtube, playlistTitle) => {
+const createNewPlaylist = async (youtube, playlistTitle, channelId) => {
   try {
     // Create a new playlist
     const newPlaylist = await youtube.playlists.insert({
@@ -158,7 +157,8 @@ const createNewPlaylist = async (youtube, playlistTitle) => {
       requestBody: {
         snippet: {
           title: playlistTitle,
-          description: `${playlistTitle} - created ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+          description: `${playlistTitle} - created ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+          channelId: channelId
         },
         status: {
           privacyStatus: 'public'
@@ -225,32 +225,7 @@ const refreshOldestChannelData = async () => {
   return oldestChannel;
 };
 
-const deleteAllExistingPlaylists = async (youtube) => {
-  try {
-    // Get all playlists for the authenticated user
-    const response = await youtube.playlists.list({
-      part: 'id',
-      mine: true,
-      maxResults: 50 // Adjust this value if you have more playlists
-    });
-
-    // Delete each playlist
-    for (const playlist of response.data.items) {
-      await youtube.playlists.delete({
-        id: playlist.id
-      });
-      console.log(`Deleted playlist: ${playlist.id}`);
-    }
-
-    console.log('All existing playlists have been deleted');
-  } catch (error) {
-    console.error('Error in deleteAllExistingPlaylists:', error);
-    throw error;
-  }
-};
-
 const upsertVideosFromChannel = async (channelId) => {
-  console.log('upsertVideosFromChannel', channelId);
   const youtube = await getYoutubeClient();
   let nextPageToken = '';
   let allUpsertedVideos = [];
@@ -316,37 +291,66 @@ app.get("/version", (req, res) => {
 });
 
 app.get("/upsert-playlists", async (req, res) => {
-  const updatedChannels = [];
   try {
     const youtube = await getYoutubeClient();
-    // Delete all existing playlists
-    await deleteAllExistingPlaylists(youtube);
 
-    // Get all channels
-    const channels = await prisma.channels.findMany();
-
-    // Randomize the order of channels
-    const shuffledChannels = channels.sort(() => Math.random() - 0.5);
-
-    for (const channel of shuffledChannels) {
-      try {
-        // Create two playlists for each channel
-        for (const timeFrame of [3, 12]) {
-          let topVideos = await getTopVideos(channel, timeFrame);
-          const playlistTitle = getPlaylistTitle(channel, timeFrame);      
-          const playlistId = await createNewPlaylist(youtube, playlistTitle);
-          await insertVideosInPlaylist(youtube, playlistId, topVideos);
-        }
-        updatedChannels.push(channel.channelName);
-      } catch (channelError) {
-        console.error(`Error processing channel ${channel.channelName}:`, channelError);
-        // Continue with the next channel
+    // Get all channels and find the one updated longest ago
+    const oldestChannel = await prisma.channels.findFirst({
+      orderBy: {
+        updatedAt: 'asc'
       }
+    });
+
+    try {
+      // Update two playlists for the oldest channel
+      for (const timeFrame of [3, 12]) {
+        let topVideos = await getTopVideos(oldestChannel, timeFrame);
+        const playlistTitle = getPlaylistTitle(oldestChannel, timeFrame);
+        
+        // Get existing playlist or create a new one
+        let playlistId;
+        const existingPlaylist = await youtube.playlists.list({
+          part: 'snippet',
+          channelId: oldestChannel.channelId,
+          maxResults: 50
+        });
+        
+        const playlist = existingPlaylist.data.items.find(item => item.snippet.title === playlistTitle);
+        
+        if (playlist) {
+          playlistId = playlist.id;
+          // Remove all videos from the existing playlist
+          const playlistItems = await youtube.playlistItems.list({
+            part: 'id',
+            playlistId: playlistId,
+            maxResults: 50
+          });
+          
+          for (const item of playlistItems.data.items) {
+            await youtube.playlistItems.delete({
+              id: item.id
+            });
+          }
+        } else {
+          playlistId = await createNewPlaylist(youtube, playlistTitle, oldestChannel.channelId);
+        }
+
+        console.log(`Inserting ${topVideos.length} videos in playlist ${playlistTitle}`);
+        await insertVideosInPlaylist(youtube, playlistId, topVideos);
+      }
+
+      // Update the channel's updatedAt timestamp
+      await prisma.channels.update({
+        where: { id: oldestChannel.id },
+        data: { updatedAt: new Date() }
+      });
+
+    } catch (channelError) {
+      console.error(`Error processing channel ${oldestChannel.channelName}:`, channelError);
     }
 
     res.status(200).json({ 
-      message: "Playlists created and videos added successfully",
-      updatedChannels: updatedChannels
+      message: `Playlists updated for ${oldestChannel.channelName} and videos added.`,
     });
   } catch (error) {
     console.error('Error in upsert-playlists:', error);
