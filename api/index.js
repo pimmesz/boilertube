@@ -294,84 +294,75 @@ app.get("/upsert-playlists", async (req, res) => {
   try {
     const youtube = await getYoutubeClient();
 
-    // Get all channels and find the one updated longest ago
     const oldestChannel = await prisma.channels.findFirst({
-      orderBy: {
-        updatedAt: 'asc'
-      }
+      orderBy: { updatedAt: 'asc' }
     });
 
-    try {
-      // Update two playlists for the oldest channel
-      for (const timeFrame of [3, 12]) {
-        let topVideos = await getTopVideos(oldestChannel, timeFrame);
-        const playlistTitle = getPlaylistTitle(oldestChannel, timeFrame);
-        
-        // Get existing playlist or create a new one
-        let playlistId;
-        const existingPlaylist = await youtube.playlists.list({
-          part: 'snippet',
-          channelId: oldestChannel.channelId,
-          maxResults: 50
-        });
-        
-        const playlist = existingPlaylist.data.items.find(item => item.snippet.title === playlistTitle);
-        
-        if (playlist) {
-          playlistId = playlist.id;
-          // Remove all videos from the existing playlist
-          const playlistItems = await youtube.playlistItems.list({
-            part: 'id',
-            playlistId: playlistId,
-            maxResults: 50
-          });
-          
-          for (const item of playlistItems.data.items) {
-            await youtube.playlistItems.delete({
-              id: item.id
-            });
-          }
-        } else {
-          playlistId = await createNewPlaylist(youtube, playlistTitle, oldestChannel.channelId);
-        }
-
-        console.log(`Inserting ${topVideos.length} videos in playlist ${playlistTitle}`);
-        await insertVideosInPlaylist(youtube, playlistId, topVideos);
-      }
-
-      // Update the channel's updatedAt timestamp
-      await prisma.channels.update({
-        where: { id: oldestChannel.id },
-        data: { updatedAt: new Date() }
-      });
-
-    } catch (channelError) {
-      console.error(`Error processing channel ${oldestChannel.channelName}:`, channelError);
+    if (!oldestChannel) {
+      return res.status(404).json({ message: "No channels found" });
     }
 
+    for (const timeFrame of [3, 12]) {
+      const topVideos = await getTopVideos(oldestChannel, timeFrame);
+      const playlistTitle = getPlaylistTitle(oldestChannel, timeFrame);
+      
+      const existingPlaylist = await youtube.playlists.list({
+        part: 'snippet',
+        channelId: oldestChannel.channelId,
+        maxResults: 50
+      });
+      
+      const playlist = existingPlaylist.data.items.find(item => item.snippet.title === playlistTitle);
+      
+      let playlistId;
+      if (playlist) {
+        playlistId = playlist.id;
+        await clearPlaylist(youtube, playlistId);
+      } else {
+        playlistId = await createNewPlaylist(youtube, playlistTitle, oldestChannel.channelId);
+      }
+
+      console.log(`Inserting ${topVideos.length} videos in playlist ${playlistTitle}`);
+      await insertVideosInPlaylist(youtube, playlistId, topVideos);
+    }
+
+    await prisma.channels.update({
+      where: { id: oldestChannel.id },
+      data: { updatedAt: new Date() }
+    });
+
     res.status(200).json({ 
-      message: `Playlists updated for ${oldestChannel.channelName} and videos added.`,
+      message: `Playlists updated for ${oldestChannel.channelName} and videos added.`
     });
   } catch (error) {
     console.error('Error in upsert-playlists:', error);
     res.status(500).json({ 
       error: {
-        error: error.response?.data || {
-          code: error.code || 500,
-          message: error.message || "An unexpected error occurred",
-          errors: [
-            {
-              domain: "youtube.CoreErrorDomain",
-              reason: error.reason || "UNKNOWN_ERROR"
-            }
-          ],
-          status: error.status || "INTERNAL_SERVER_ERROR"
-        }
-      },
-      updatedChannels: updatedChannels
+        code: error.code || 500,
+        message: error.message || "An unexpected error occurred",
+        errors: [
+          {
+            domain: "youtube.CoreErrorDomain",
+            reason: error.reason || "UNKNOWN_ERROR"
+          }
+        ],
+        status: error.status || "INTERNAL_SERVER_ERROR"
+      }
     });
   }
 });
+
+async function clearPlaylist(youtube, playlistId) {
+  const playlistItems = await youtube.playlistItems.list({
+    part: 'id',
+    playlistId: playlistId,
+    maxResults: 50
+  });
+  
+  for (const item of playlistItems.data.items) {
+    await youtube.playlistItems.delete({ id: item.id });
+  }
+}
 
 app.get("/videos", async (req, res) => {
   const { fromdate: fromDate, channel } = req.query;
