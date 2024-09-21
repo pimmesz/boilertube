@@ -41,8 +41,7 @@ const {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   TELEGRAM_API_KEY,
-  TELEGRAM_CHAT_ID,
-  TUBE_YT_CHANNEL_ID
+  TELEGRAM_CHAT_ID
 } = process.env;
 
 // Set up OAuth2 client
@@ -147,7 +146,7 @@ const fetchExistingPlaylists = async (youtube) => {
   try {
     existingPlaylist = await youtube.playlists.list({
       part: 'snippet',
-      channelId: TUBE_YT_CHANNEL_ID,
+      mine: true,
       maxResults: 50
     });
   } catch (error) {
@@ -165,17 +164,15 @@ const getPlaylistTitle = (channel, timeFrame) => {
   }
 };
 
-const createNewPlaylist = async (youtube, playlistTitle, channelId) => {
+const createNewPlaylist = async (youtube, playlistTitle) => {
   try {
     // Create a new playlist
     const newPlaylist = await youtube.playlists.insert({
       part: 'snippet,status',
-      onBehalfOfContentOwner: TUBE_YT_CHANNEL_ID,
       requestBody: {
         snippet: {
           title: playlistTitle,
-          description: `${playlistTitle} - created ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
-          channelId: channelId
+          description: `${playlistTitle} - created ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
         },
         status: {
           privacyStatus: 'public'
@@ -331,7 +328,7 @@ app.get("/upsert-playlists", async (req, res) => {
         playlistId = playlist.id;
         await clearPlaylist(youtube, playlistId);
       } else {
-        playlistId = await createNewPlaylist(youtube, playlistTitle, oldestChannel.channelId);
+        playlistId = await createNewPlaylist(youtube, playlistTitle);
       }
 
       console.log(`Inserting ${topVideos.length} videos in playlist ${playlistTitle}`);
