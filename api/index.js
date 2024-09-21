@@ -41,7 +41,8 @@ const {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   TELEGRAM_API_KEY,
-  TELEGRAM_CHAT_ID
+  TELEGRAM_CHAT_ID,
+  TUBE_YT_CHANNEL_ID
 } = process.env;
 
 // Set up OAuth2 client
