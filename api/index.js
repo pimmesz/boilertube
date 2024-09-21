@@ -142,6 +142,21 @@ const getTopVideos = async (channel, timeFrame = 1) => {
   return allVideos.slice(0, Math.min(topCount, 20));
 };
 
+const fetchExistingPlaylists = async (youtube) => {
+  let existingPlaylist;
+  try {
+    existingPlaylist = await youtube.playlists.list({
+      part: 'snippet',
+      channelId: TUBE_YT_CHANNEL_ID,
+      maxResults: 50
+    });
+  } catch (error) {
+    console.error('Error fetching existing playlists:', error);
+    throw new Error(`Failed to fetch existing playlists: ${error.message}`);
+  }
+  return existingPlaylist;
+};
+
 const getPlaylistTitle = (channel, timeFrame) => {
   if (timeFrame === 3) {
     return `Top videos ${timeFrame} months - ${channel.channelName}`;
@@ -307,12 +322,7 @@ app.get("/upsert-playlists", async (req, res) => {
     for (const timeFrame of [3, 12]) {
       const topVideos = await getTopVideos(oldestChannel, timeFrame);
       const playlistTitle = getPlaylistTitle(oldestChannel, timeFrame);
-      
-      const existingPlaylist = await youtube.playlists.list({
-        part: 'snippet',
-        channelId: TUBE_YT_CHANNEL_ID,
-        maxResults: 50
-      });
+      const existingPlaylist = await fetchExistingPlaylists(youtube);
       
       const playlist = existingPlaylist.data.items.find(item => item.snippet.title === playlistTitle);
       
