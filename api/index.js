@@ -154,6 +154,7 @@ const createNewPlaylist = async (youtube, playlistTitle, channelId) => {
     // Create a new playlist
     const newPlaylist = await youtube.playlists.insert({
       part: 'snippet,status',
+      onBehalfOfContentOwner: TUBE_YT_CHANNEL_ID,
       requestBody: {
         snippet: {
           title: playlistTitle,
@@ -308,8 +309,7 @@ app.get("/upsert-playlists", async (req, res) => {
       
       const existingPlaylist = await youtube.playlists.list({
         part: 'snippet',
-        channelId: oldestChannel.channelId,
-        mine: true,
+        channelId: TUBE_YT_CHANNEL_ID,
         maxResults: 50
       });
       
@@ -401,3 +401,108 @@ app.post("/send-telegram-message", async (req, res) => {
 });
 
 app.get("/channels/:subdomain", async (req, res) => {
+  const { subdomain } = req.params;
+  const sanitizedSubdomain = sanitizeName(subdomain);
+  const channel = await prisma.channels.findUnique({
+    where: { subdomain: sanitizedSubdomain },
+  });
+  res.json({ channel });
+});
+
+app.get("/search-channels/:channelName", async (req, res) => {
+  const { channelName } = req.params;
+  try {
+    const youtube = await getYoutubeClient();
+    const response = await youtube.search.list({
+      part: 'snippet',
+      q: channelName,
+      type: 'channel',
+      maxResults: 5
+    });
+
+    const channels = response.data.items.map(item => ({
+      id: item.id.channelId,
+      title: item.snippet.title,
+      description: item.snippet.description,
+      thumbnails: item.snippet.thumbnails
+    }));
+
+    res.json({ channels });
+  } catch (error) {
+    console.error('Error searching for channels:', error);
+    res.status(500).json({ error: `An error occurred while searching for channels: ${error.errors[0].reason}` });
+  }
+});
+
+app.get("/start-fill-database", async (req, res) => {
+  const { channelid: channelId = '' } = req.query;
+  try {
+    if (!channelId) {
+      const oldestChannel = await refreshOldestChannelData();
+      res.status(200).json({ message: "Refreshed oldest channel data successfully", oldestChannel });
+    } else {
+      const allUpsertedVideos = await upsertVideosFromChannel(channelId);
+      res.status(200).json({ message: `Updated database for channel ${channelId} successfully with ${allUpsertedVideos.length} videos` });
+    }
+  } catch (error) {
+    console.error(error);
+    if (error.message.includes('The refresh token is invalid or has been revoked')) {
+      res.status(401).json({ error: "Authentication failed. Please re-authenticate." });
+    } else {
+      res.status(429).json({ error: "Exceeded Youtube API quota" });
+    }
+  }
+});
+
+// OAuth2 callback endpoint
+app.get('/generate-token', async (req, res) => {
+  try {
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: credentials.access_type,
+      scope: credentials.scope,
+      prompt: 'consent'
+    });
+
+    res.redirect(authUrl);
+  } catch (error) {
+    console.error('Error generating OAuth URL:', error);
+    res.status(500).send('Failed to generate authentication URL: ' + error.message);
+  }
+});
+
+// OAuth2 callback endpoint
+app.get('/oauth2callback', async (req, res) => {
+  const { code, error } = req.query;
+  
+  if (error) {
+    console.error('OAuth error:', error);
+    return res.status(400).send(`OAuth error: ${error}`);
+  }
+  
+  if (!code) {
+    console.error('No authorization code provided in query parameters');
+    return res.status(400).send('No authorization code provided. Please try the authentication process again.');
+  }
+  
+  try {
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    console.log('Set tokens in environment variables', tokens);
+    process.env.CLIENT_TOKEN = tokens.access_token;
+    process.env.CLIENT_REFRESH_TOKEN = tokens.refresh_token;
+    process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
+
+    // Send a success response without including the tokens in the response
+    res.status(200).send('Authentication successful! You can close this window. Tokens: ' + JSON.stringify(tokens));
+  } catch (error) {
+    console.error('Error exchanging code for tokens:', error);
+    res.status(500).send(`Authentication failed: ${error.message}`);
+  }
+});
+
+// Start the app
+const server = http.createServer(app);
+server.listen(port, () => {
+  console.log(`App running on port: ${port}`);
+});
