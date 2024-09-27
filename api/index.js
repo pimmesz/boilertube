@@ -84,22 +84,17 @@ BigInt.prototype.toJSON = function() { return this.toString() };
 const getYoutubeClient = async () => {
   try {
     // Refresh the access token
-    oauth2Client.refreshAccessToken((err, tokens) => {
-      if (err) {
-        console.error('Error refreshing access token:', err);
-        return;
-      }
-      
-      // Save the new access token
-      oauth2Client.setCredentials(tokens);
+    const tokens = await oauth2Client.refreshAccessToken();
+    
+    // Save the new access token
+    oauth2Client.setCredentials(tokens.credentials);
 
-      // Update environment variables with fresh credentials
-      process.env.CLIENT_TOKEN = tokens.access_token;
-      process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
-      if (tokens.refresh_token) {
-        process.env.CLIENT_REFRESH_TOKEN = tokens.refresh_token;
-      }
-    });
+    // Update environment variables with fresh credentials
+    process.env.CLIENT_TOKEN = tokens.credentials.access_token;
+    process.env.CLIENT_EXPIRATION_DATE = tokens.credentials.expiry_date;
+    if (tokens.credentials.refresh_token) {
+      process.env.CLIENT_REFRESH_TOKEN = tokens.credentials.refresh_token;
+    }
 
     return google.youtube({ version: 'v3', auth: oauth2Client });
   } catch (error) {
@@ -502,7 +497,7 @@ app.get('/oauth2callback', async (req, res) => {
     process.env.CLIENT_EXPIRATION_DATE = tokens.expiry_date;
 
     // Send a success response without including the tokens in the response
-    res.status(200).send('Authentication successful! You can close this window. Tokens: ' + JSON.stringify(tokens));
+    res.status(200).send('Authentication successful! You can close this window.');
   } catch (error) {
     console.error('Error exchanging code for tokens:', error);
     res.status(500).send(`Authentication failed: ${error.message}`);
