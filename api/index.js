@@ -41,7 +41,8 @@ const {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   TELEGRAM_API_KEY,
-  TELEGRAM_CHAT_ID
+  TELEGRAM_CHAT_ID,
+  YOUTUBE_API_KEY
 } = process.env;
 
 // Set up OAuth2 client
@@ -81,29 +82,8 @@ oauth2Client.on('tokens', (tokens) => {
 // Utility functions
 BigInt.prototype.toJSON = function() { return this.toString() };
 
-const getYoutubeClient = async () => {
-  try {
-    // Refresh the access token
-    const tokens = await oauth2Client.refreshAccessToken();
-    
-    // Save the new access token
-    oauth2Client.setCredentials(tokens.credentials);
-
-    // Update environment variables with fresh credentials
-    process.env.CLIENT_TOKEN = tokens.credentials.access_token;
-    process.env.CLIENT_EXPIRATION_DATE = tokens.credentials.expiry_date;
-    if (tokens.credentials.refresh_token) {
-      process.env.CLIENT_REFRESH_TOKEN = tokens.credentials.refresh_token;
-    }
-
-    return google.youtube({ version: 'v3', auth: oauth2Client });
-  } catch (error) {
-    console.error('Error refreshing OAuth token:', error);
-    if (error.response && error.response.data && error.response.data.error === 'invalid_grant') {
-      throw new Error('Authentication failed. The refresh token is invalid or has been revoked. Please re-authenticate.');
-    }
-    throw new Error(`Authentication failed. ${error.message}`);
-  }
+const getYoutubeClient = () => {
+  return google.youtube({ version: 'v3', auth: YOUTUBE_API_KEY });
 };
 
 const sanitizeName = (filename) => {
@@ -235,7 +215,7 @@ const refreshOldestChannelData = async () => {
 };
 
 const upsertVideosFromChannel = async (channelId) => {
-  const youtube = await getYoutubeClient();
+  const youtube = getYoutubeClient();
   let nextPageToken = '';
   let allUpsertedVideos = [];
 
@@ -301,7 +281,7 @@ app.get("/version", (req, res) => {
 
 app.get("/upsert-playlists", async (req, res) => {
   try {
-    const youtube = await getYoutubeClient();
+    const youtube = getYoutubeClient();
 
     const oldestChannel = await prisma.channels.findFirst({
       orderBy: { updatedAt: 'asc' }
@@ -415,7 +395,7 @@ app.get("/channels/:subdomain", async (req, res) => {
 app.get("/search-channels/:channelName", async (req, res) => {
   const { channelName } = req.params;
   try {
-    const youtube = await getYoutubeClient();
+    const youtube = getYoutubeClient();
     const response = await youtube.search.list({
       part: 'snippet',
       q: channelName,
@@ -449,11 +429,7 @@ app.get("/start-fill-database", async (req, res) => {
     }
   } catch (error) {
     console.error(error);
-    if (error.message.includes('The refresh token is invalid or has been revoked')) {
-      res.status(401).json({ error: "Authentication failed. Please re-authenticate." });
-    } else {
-      res.status(429).json({ error: "Exceeded Youtube API quota" });
-    }
+    res.status(500).json({ error: "An error occurred while filling the database" });
   }
 });
 
