@@ -263,6 +263,7 @@ app.get("/search-channels/:channelName", async (req, res) => {
   }
 });
 
+// Example URL: /start-fill-database?channelid=UC_x5XG1OV2P6uZZ5FSM9Ttw
 app.get("/start-fill-database", async (req, res) => {
   const { channelid: channelId = '' } = req.query;
   try {

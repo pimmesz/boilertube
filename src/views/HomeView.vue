@@ -7,6 +7,8 @@
 				v-for="channel in availableChannels" :key="channel.id"
 				:href="`https://${channel.subdomain}.tube.yt`"
 				:style="{ border: channel.imageError ? '1px solid white' : 'none' }"
+				:data-id="channel?.id"
+				:data-channel-name="channel?.channelName"
 			>
 				<v-img 
 					v-if="channel.thumbnails?.default?.url && !channel.imageError" 
