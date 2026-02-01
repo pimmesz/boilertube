@@ -100,6 +100,19 @@ const sanitizeName = (filename) => {
     .toLowerCase();
 };
 
+// Minimum video duration for livesets (10 minutes = 600 seconds)
+// Colors is an exception - they have shorter single performances
+const MIN_DURATION_SECONDS = 600;
+const COLORS_CHANNEL_NAME = 'colorsxstudios';
+
+const isColorsChannel = (channelName) => {
+  return sanitizeName(channelName || '') === COLORS_CHANNEL_NAME;
+};
+
+const getMinDuration = (channelName) => {
+  return isColorsChannel(channelName) ? 60 : MIN_DURATION_SECONDS;
+};
+
 // Parse ISO 8601 duration (PT1H30M45S) to seconds
 const parseDuration = (duration) => {
   if (!duration) return 0;
@@ -112,11 +125,15 @@ const parseDuration = (duration) => {
 };
 
 const getAllVideosBetweenDates = async (channel, fromDate) => {
+  const minDuration = getMinDuration(channel);
   const videos = await prisma.video.findMany({
     where: {
       channel: channel,
       publishedAt: {
         gte: new Date(fromDate).toISOString()
+      },
+      duration: {
+        gte: minDuration
       }
     },
     orderBy: {
@@ -226,9 +243,13 @@ const upsertVideosFromChannel = async (channelId) => {
     nextPageToken = response.data.nextPageToken;
   } while (nextPageToken);
 
-  // Compute and store average view count for this channel
+  // Compute and store average view count for this channel (excluding shorts/short videos)
+  const minDuration = getMinDuration(channelName);
   const channelVideos = await prisma.video.findMany({
-    where: { channelId: channelId },
+    where: {
+      channelId: channelId,
+      duration: { gte: minDuration }
+    },
     select: { viewCount: true }
   });
 
@@ -294,14 +315,15 @@ app.get("/featured-videos", async (req, res) => {
     fromDate.setDate(fromDate.getDate() - days);
 
     // Fetch recent videos and all channels in parallel
+    // We fetch videos >= 60s (to include Colors), then filter by channel-specific duration later
     const [recentVideos, channels] = await Promise.all([
       prisma.video.findMany({
         where: {
           publishedAt: { gte: fromDate.toISOString() },
-          duration: { gte: 60 } // Exclude shorts
+          duration: { gte: 60 } // Base filter, channel-specific filtering below
         },
         orderBy: { viewCount: 'desc' },
-        take: 50
+        take: 100 // Fetch more to account for filtering
       }),
       prisma.channels.findMany()
     ]);
@@ -323,8 +345,10 @@ app.get("/featured-videos", async (req, res) => {
     const computedAvgMap = new Map();
     if (channelsNeedingAvg.size > 0) {
       for (const channelId of channelsNeedingAvg) {
+        const channelInfo = channelByIdMap.get(channelId);
+        const minDuration = channelInfo ? getMinDuration(channelInfo.channelName) : MIN_DURATION_SECONDS;
         const channelVideos = await prisma.video.findMany({
-          where: { channelId, duration: { gte: 60 } },
+          where: { channelId, duration: { gte: minDuration } },
           select: { viewCount: true },
           take: 100
         });
@@ -341,6 +365,10 @@ app.get("/featured-videos", async (req, res) => {
       const channelInfo = channelByIdMap.get(video.channelId) || channelByNameMap.get(video.channel);
 
       if (!channelInfo) return null;
+
+      // Check channel-specific minimum duration
+      const minDuration = getMinDuration(channelInfo.channelName);
+      if (video.duration < minDuration) return null;
 
       // Use pre-computed avgViewCount or fallback to on-the-fly computed
       let avgViews = Number(channelInfo.avgViewCount);
