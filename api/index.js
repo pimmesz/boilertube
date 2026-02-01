@@ -15,6 +15,7 @@ import http from "http";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import packageJson from '../package.json' with { type: 'json' };
 import { google } from 'googleapis';
 import axios from 'axios';
@@ -22,8 +23,10 @@ import axios from 'axios';
 // Load environment variables
 dotenv.config();
 
-// Initialize Prisma client
-const prisma = new PrismaClient();
+// Initialize Prisma client with pg adapter for Prisma 7.x
+const connectionString = process.env.POSTGRES_PRISMA_URL;
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
 
 // Set up Express app
 const app = express();
