@@ -468,6 +468,34 @@ app.get("/rebuild-database", async (req, res) => {
   }
 });
 
+// Delete a channel and all its videos
+app.get("/delete-channel", async (req, res) => {
+  const { channelid: channelId } = req.query;
+
+  if (!channelId) {
+    return res.status(400).json({ error: "channelid parameter is required" });
+  }
+
+  try {
+    // Delete all videos from this channel
+    const deletedVideos = await prisma.video.deleteMany({
+      where: { channelId: channelId }
+    });
+
+    // Delete the channel
+    const deletedChannel = await prisma.channels.delete({
+      where: { id: channelId }
+    });
+
+    res.status(200).json({
+      message: `Deleted channel ${deletedChannel.channelName} and ${deletedVideos.count} videos`
+    });
+  } catch (error) {
+    console.error('Error deleting channel:', error);
+    res.status(500).json({ error: "An error occurred while deleting the channel" });
+  }
+});
+
 // OAuth2 callback endpoint
 app.get('/generate-token', async (req, res) => {
   try {
