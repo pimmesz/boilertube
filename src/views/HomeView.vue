@@ -159,7 +159,7 @@
 						</v-img>
 						<div class="featured-card__score">
 							<v-icon icon="mdi-trending-up" size="x-small"></v-icon>
-							{{ Math.round(video.score * 100) }}%
+							+{{ Math.round((video.score - 1) * 100) }}%
 						</div>
 					</div>
 					<div class="featured-card__content">
