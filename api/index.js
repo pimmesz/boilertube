@@ -145,16 +145,36 @@ const upsertVideosFromChannel = async (channelId) => {
   let nextPageToken = '';
   let allUpsertedVideos = [];
 
-  const channelThumbnails = await youtube.channels.list({
-    part: 'snippet',
+  // Get channel info from YouTube API
+  const channelResponse = await youtube.channels.list({
+    part: 'snippet,statistics',
     id: channelId
-  }).then(response => response.data.items[0].snippet.thumbnails);
+  });
 
-  await prisma.channels.update({
+  const channelData = channelResponse.data.items[0];
+  const channelName = channelData.snippet.title;
+  const channelThumbnails = channelData.snippet.thumbnails;
+  const subscriberCount = channelData.statistics?.subscriberCount || 0;
+  const viewCount = channelData.statistics?.viewCount || 0;
+
+  // Upsert channel (create if not exists, update if exists)
+  await prisma.channels.upsert({
     where: { id: channelId },
-    data: { 
+    update: {
       updatedAt: new Date().toISOString(),
-      thumbnails: JSON.stringify(channelThumbnails)
+      thumbnails: JSON.stringify(channelThumbnails),
+      channelName: channelName,
+      subscriberCount: BigInt(subscriberCount),
+      viewCount: BigInt(viewCount)
+    },
+    create: {
+      id: channelId,
+      subdomain: sanitizeName(channelName),
+      channelName: channelName,
+      updatedAt: new Date().toISOString(),
+      thumbnails: JSON.stringify(channelThumbnails),
+      subscriberCount: BigInt(subscriberCount),
+      viewCount: BigInt(viewCount)
     }
   });
 
