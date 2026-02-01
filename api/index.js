@@ -389,6 +389,40 @@ app.get("/start-fill-database", async (req, res) => {
   }
 });
 
+// Rebuild database - delete all videos and re-fetch from all channels
+app.get("/rebuild-database", async (req, res) => {
+  try {
+    // Delete all videos
+    const deleted = await prisma.video.deleteMany({});
+    console.log(`Deleted ${deleted.count} videos`);
+
+    // Get all channels
+    const channels = await prisma.channels.findMany();
+
+    // Re-fetch videos for each channel
+    let totalVideos = 0;
+    for (const channel of channels) {
+      try {
+        const videos = await upsertVideosFromChannel(channel.id);
+        totalVideos += videos.length;
+        console.log(`Rebuilt ${videos.length} videos for ${channel.channelName}`);
+      } catch (err) {
+        console.error(`Failed to rebuild ${channel.channelName}:`, err.message);
+      }
+    }
+
+    res.status(200).json({
+      message: "Database rebuilt successfully",
+      deletedVideos: deleted.count,
+      newVideos: totalVideos,
+      channels: channels.length
+    });
+  } catch (error) {
+    console.error('Error rebuilding database:', error);
+    res.status(500).json({ error: "An error occurred while rebuilding the database" });
+  }
+});
+
 // OAuth2 callback endpoint
 app.get('/generate-token', async (req, res) => {
   try {
