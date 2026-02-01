@@ -157,9 +157,9 @@
 								</v-row>
 							</template>
 						</v-img>
-						<div class="featured-card__score">
-							<v-icon icon="mdi-trending-up" size="x-small"></v-icon>
-							+{{ Math.round((video.score - 1) * 100) }}%
+						<div class="featured-card__score" :class="{ 'featured-card__score--negative': video.score < 1 }">
+							<v-icon :icon="video.score >= 1 ? 'mdi-trending-up' : 'mdi-trending-down'" size="x-small"></v-icon>
+							{{ video.score >= 1 ? '+' : '' }}{{ Math.round((video.score - 1) * 100) }}%
 						</div>
 					</div>
 					<div class="featured-card__content">
@@ -569,6 +569,10 @@ onMounted(() => {
 	display: flex;
 	align-items: center;
 	gap: 4px;
+}
+
+.featured-card__score--negative {
+	color: #fbbf24;
 }
 
 .featured-card__content {

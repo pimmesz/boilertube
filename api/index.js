@@ -388,12 +388,12 @@ app.get("/featured-videos", async (req, res) => {
       };
     });
 
-    // Filter out nulls and videos below average (score < 1)
-    // Sort by score (highest relative performance)
+    // Filter out nulls, sort by score (highest relative performance)
+    // Always show top 3 videos (even if below average) to fill slots
     // Limit to 1 video per channel for diversity
     const seenChannels = new Set();
     const featured = videosWithScore
-      .filter(v => v !== null && v.score >= 1)
+      .filter(v => v !== null)
       .sort((a, b) => b.score - a.score)
       .filter(v => {
         if (seenChannels.has(v.channel)) return false;
