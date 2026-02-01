@@ -310,21 +310,52 @@ app.get("/featured-videos", async (req, res) => {
     const channelByIdMap = new Map(channels.map(c => [c.id, c]));
     const channelByNameMap = new Map(channels.map(c => [sanitizeName(c.channelName), c]));
 
-    // Calculate scores using pre-computed avgViewCount
+    // Get all unique channel IDs that need avgViewCount computed
+    const channelsNeedingAvg = new Set();
+    for (const video of recentVideos) {
+      const channelInfo = channelByIdMap.get(video.channelId) || channelByNameMap.get(video.channel);
+      if (channelInfo && Number(channelInfo.avgViewCount) === 0) {
+        channelsNeedingAvg.add(video.channelId);
+      }
+    }
+
+    // Compute averages on-the-fly for channels that don't have it yet
+    const computedAvgMap = new Map();
+    if (channelsNeedingAvg.size > 0) {
+      for (const channelId of channelsNeedingAvg) {
+        const channelVideos = await prisma.video.findMany({
+          where: { channelId, duration: { gte: 60 } },
+          select: { viewCount: true },
+          take: 100
+        });
+        if (channelVideos.length > 0) {
+          const avg = channelVideos.reduce((sum, v) => sum + Number(v.viewCount), 0) / channelVideos.length;
+          computedAvgMap.set(channelId, avg);
+        }
+      }
+    }
+
+    // Calculate scores using pre-computed or on-the-fly avgViewCount
     const videosWithScore = recentVideos.map(video => {
       // Try to find channel by ID first, then by name
       const channelInfo = channelByIdMap.get(video.channelId) || channelByNameMap.get(video.channel);
 
-      if (!channelInfo || Number(channelInfo.avgViewCount) === 0) return null;
+      if (!channelInfo) return null;
 
-      const avgViews = Number(channelInfo.avgViewCount);
+      // Use pre-computed avgViewCount or fallback to on-the-fly computed
+      let avgViews = Number(channelInfo.avgViewCount);
+      if (avgViews === 0) {
+        avgViews = computedAvgMap.get(video.channelId) || 0;
+      }
+      if (avgViews === 0) return null;
+
       const score = Number(video.viewCount) / avgViews;
 
       return {
         ...video,
         thumbnails: video.thumbnails,
         score,
-        avgViews,
+        avgViews: Math.round(avgViews),
         channelThumbnail: channelInfo.thumbnails
       };
     });
