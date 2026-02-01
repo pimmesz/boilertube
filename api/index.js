@@ -15,7 +15,6 @@ import http from "http";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
 import packageJson from '../package.json' with { type: 'json' };
 import { google } from 'googleapis';
 import axios from 'axios';
@@ -23,17 +22,9 @@ import axios from 'axios';
 // Load environment variables
 dotenv.config();
 
-// Initialize Prisma client with pg adapter for Prisma 7.x
-// Use singleton pattern to prevent multiple connections in serverless
+// Initialize Prisma client with singleton pattern for serverless
 const globalForPrisma = globalThis;
-const connectionString = process.env.POSTGRES_PRISMA_URL;
-
-function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString });
-  return new PrismaClient({ adapter });
-}
-
-const prisma = globalForPrisma.prisma ?? createPrismaClient();
+const prisma = globalForPrisma.prisma ?? new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // Set up Express app
