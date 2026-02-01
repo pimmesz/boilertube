@@ -384,30 +384,44 @@ watch(rangeUnit, () => {
   }
 });
 
-// Fetch videos and save preference when filter changes
+// Track if initial load is complete to avoid double-fetching
+const initialLoadComplete = ref(false);
+
+// Fetch videos and save preference when filter changes (skip during initial load)
 watch(dateFilter, (newFilter) => {
-  fetchVideos(newFilter);
-  saveFilterPreference();
+  if (initialLoadComplete.value) {
+    fetchVideos(newFilter);
+    saveFilterPreference();
+  }
 }, { deep: true });
 
 onMounted(async () => {
   subdomain.value = getSubdomain();
 
+  // Load saved preference first (before fetching)
+  loadFilterPreference();
+
   try {
-    channel.value = await fetchChannel();
+    // Fetch channel and videos in parallel for faster loading
+    const [channelData] = await Promise.all([
+      fetchChannel(),
+      fetchVideos(dateFilter.value)
+    ]);
+
+    channel.value = channelData;
     channelIsLoading.value = false;
 
-    // Load saved preference or use default
-    const hasPreference = loadFilterPreference();
-
-    if (!hasPreference) {
-      await fetchVideos({ days: 0, weeks: 0, months: 1 });
-      if (videos.value.length < 3) {
-        rangeNumber.value = 3;
-      }
+    // If too few videos with default filter, expand to 3 months
+    if (videos.value.length < 3 && rangeNumber.value === 1) {
+      rangeNumber.value = 3;
+      await fetchVideos(dateFilter.value);
     }
+
+    // Mark initial load complete - subsequent filter changes will trigger fetches
+    initialLoadComplete.value = true;
   } catch (e) {
     channelIsLoading.value = false;
+    initialLoadComplete.value = true;
   }
 
   // Add scroll listener for back to top button
