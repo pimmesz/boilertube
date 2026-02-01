@@ -108,13 +108,25 @@
 		</div>
 
 		<!-- Featured Videos Section -->
-		<section v-if="!isLoading && featuredVideos.length > 0" class="featured-section">
+		<section v-if="!isLoading" class="featured-section">
 			<h2 class="featured-title">
 				<v-icon icon="mdi-fire" class="mr-2"></v-icon>
 				Trending
 			</h2>
 			<p class="featured-subtitle">Videos performing exceptionally well compared to their channel average</p>
-			<div class="featured-grid">
+			<div class="trending-filters">
+				<v-btn
+					v-for="filter in trendingFilters"
+					:key="filter.days"
+					:variant="trendingDays === filter.days ? 'flat' : 'outlined'"
+					:color="trendingDays === filter.days ? 'white' : undefined"
+					size="small"
+					@click="setTrendingDays(filter.days)"
+				>
+					{{ filter.label }}
+				</v-btn>
+			</div>
+			<div v-if="featuredVideos.length > 0" class="featured-grid">
 				<a
 					v-for="video in featuredVideos"
 					:key="video.id"
@@ -191,6 +203,18 @@ const sortOptions = [
 	{ label: 'Recently updated', value: 'updated' }
 ];
 
+const trendingDays = ref(7);
+const trendingFilters = [
+	{ label: '1 Week', days: 7 },
+	{ label: '1 Month', days: 30 },
+	{ label: '3 Months', days: 90 }
+];
+
+const setTrendingDays = (days: number) => {
+	trendingDays.value = days;
+	fetchFeaturedVideos();
+};
+
 const filteredChannels = computed(() => {
 	let channels = [...availableChannels.value];
 
@@ -252,7 +276,7 @@ const fetchAvailableChannels = async () => {
 
 const fetchFeaturedVideos = async () => {
 	try {
-		const response = await axios.get(`${getBaseUrl()}/featured-videos`);
+		const response = await axios.get(`${getBaseUrl()}/featured-videos?days=${trendingDays.value}`);
 		featuredVideos.value = response.data.featured.map((video: any) => ({
 			...video,
 			thumbnails: parseThumbnails(video.thumbnails)
@@ -470,7 +494,17 @@ onMounted(() => {
 .featured-subtitle {
 	font-size: 0.9rem;
 	opacity: 0.7;
+	margin-bottom: 16px;
+}
+
+.trending-filters {
+	display: flex;
+	gap: 8px;
 	margin-bottom: 24px;
+}
+
+.trending-filters .v-btn {
+	text-transform: none;
 }
 
 .featured-grid {

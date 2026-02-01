@@ -269,16 +269,17 @@ app.get("/available-channels", async (req, res) => {
 });
 
 // Get featured videos - videos that performed exceptionally well compared to channel average
+// Optional query param: days (default 14)
 app.get("/featured-videos", async (req, res) => {
   try {
     setCache(res, 300); // 5 minutes - featured videos are computed
-    // Get videos from the past 2 weeks
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    const days = parseInt(req.query.days) || 14;
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
 
     const recentVideos = await prisma.video.findMany({
       where: {
-        publishedAt: { gte: twoWeeksAgo.toISOString() },
+        publishedAt: { gte: fromDate.toISOString() },
         duration: { gte: 60 } // Exclude shorts
       },
       orderBy: { viewCount: 'desc' },
@@ -374,28 +375,42 @@ app.get("/channels/:subdomain", async (req, res) => {
   }
 });
 
-app.get("/search-channels/:channelName", async (req, res) => {
-  const { channelName } = req.params;
+// Search for channels by name
+// Single: /search-channels/Boiler%20Room
+// Multiple: /search-channels/Boiler%20Room,Cercle,Mixmag
+app.get("/search-channels/:channelNames", async (req, res) => {
+  const { channelNames } = req.params;
+  const searchTerms = channelNames.split(',').map(term => term.trim()).filter(Boolean);
+
   try {
     const youtube = getYoutubeClient();
-    const response = await youtube.search.list({
-      part: 'snippet',
-      q: channelName,
-      type: 'channel',
-      maxResults: 5
-    });
+    const results = [];
 
-    const channels = response.data.items.map(item => ({
-      id: item.id.channelId,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      thumbnails: item.snippet.thumbnails
-    }));
+    for (const searchTerm of searchTerms) {
+      const response = await youtube.search.list({
+        part: 'snippet',
+        q: searchTerm,
+        type: 'channel',
+        maxResults: 3
+      });
 
-    res.json({ channels });
+      const channels = response.data.items.map(item => ({
+        id: item.id.channelId,
+        title: item.snippet.title,
+        description: item.snippet.description,
+        thumbnails: item.snippet.thumbnails
+      }));
+
+      results.push({
+        searchTerm,
+        channels
+      });
+    }
+
+    res.json({ results });
   } catch (error) {
     console.error('Error searching for channels:', error);
-    res.status(500).json({ error: `An error occurred while searching for channels: ${error.errors[0].reason}` });
+    res.status(500).json({ error: `An error occurred while searching for channels: ${error.errors?.[0]?.reason || error.message}` });
   }
 });
 
