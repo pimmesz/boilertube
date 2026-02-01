@@ -26,4 +26,5 @@ model Video {
   channel     String @default("no_value")
   channelId   String @default("no_value")
   viewCount   BigInt @default(0)
+  duration    Int    @default(0)
 }

@@ -15,7 +15,7 @@ import http from "http";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
-import packageJson from '../package.json' assert { type: 'json' };
+import packageJson from '../package.json' with { type: 'json' };
 import { google } from 'googleapis';
 import axios from 'axios';
 
@@ -80,7 +80,11 @@ oauth2Client.on('tokens', (tokens) => {
 });
 
 // Utility functions
-BigInt.prototype.toJSON = function() { return this.toString() };
+const serializeBigInt = (obj) => {
+  return JSON.parse(JSON.stringify(obj, (_key, value) =>
+    typeof value === 'bigint' ? value.toString() : value
+  ));
+};
 
 const getYoutubeClient = () => {
   return google.youtube({ version: 'v3', auth: YOUTUBE_API_KEY });
@@ -94,12 +98,23 @@ const sanitizeName = (filename) => {
     .toLowerCase();
 };
 
+// Parse ISO 8601 duration (PT1H30M45S) to seconds
+const parseDuration = (duration) => {
+  if (!duration) return 0;
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  const hours = parseInt(match[1] || 0, 10);
+  const minutes = parseInt(match[2] || 0, 10);
+  const seconds = parseInt(match[3] || 0, 10);
+  return hours * 3600 + minutes * 60 + seconds;
+};
+
 const getAllVideosBetweenDates = async (channel, fromDate) => {
   const videos = await prisma.video.findMany({
     where: {
       channel: channel,
       publishedAt: {
-        gte: new Date(fromDate)
+        gte: new Date(fromDate).toISOString()
       }
     },
     orderBy: {
@@ -157,24 +172,27 @@ const upsertVideosFromChannel = async (channelId) => {
 
     const upsertPromises = response.data.items.map((item, index) => {
       const details = videoDetails.data.items[index];
+      const durationSeconds = parseDuration(details?.contentDetails?.duration);
       return prisma.video.upsert({
         where: { id: item.snippet.resourceId.videoId },
         update: {
           channel: sanitizeName(item.snippet.videoOwnerChannelTitle),
           channelId: item.snippet.videoOwnerChannelId,
-          publishedAt: new Date(item.snippet.publishedAt),
+          publishedAt: new Date(item.snippet.publishedAt).toISOString(),
           thumbnails: JSON.stringify(item.snippet.thumbnails),
           title: item.snippet.title,
-          viewCount: BigInt(details.statistics.viewCount || 0)
+          viewCount: BigInt(details?.statistics?.viewCount || 0),
+          duration: durationSeconds
         },
         create: {
-          channel: sanitizeName(item.snippet.channelTitle),
+          channel: sanitizeName(item.snippet.videoOwnerChannelTitle),
           channelId: item.snippet.videoOwnerChannelId,
           id: item.snippet.resourceId.videoId,
-          publishedAt: new Date(item.snippet.publishedAt),
+          publishedAt: new Date(item.snippet.publishedAt).toISOString(),
           thumbnails: JSON.stringify(item.snippet.thumbnails),
           title: item.snippet.title,
-          viewCount: BigInt(details.statistics.viewCount || 0)
+          viewCount: BigInt(details?.statistics?.viewCount || 0),
+          duration: durationSeconds
         }
       });
     });
@@ -197,17 +215,90 @@ app.get("/version", (req, res) => {
 app.get("/videos", async (req, res) => {
   const { fromdate: fromDate, channel } = req.query;
 
-  if (fromDate) {
+  if (!fromDate) {
+    return res.status(400).json({ error: "fromdate parameter is required" });
+  }
+
+  try {
     const fromDateVideos = await getAllVideosBetweenDates(channel, fromDate);
-    res.json({ channel, fromDateVideos });
-  } else {
-    res.status(400).json({ error: "fromdate parameter is required" });
+    res.json(serializeBigInt({ channel, fromDateVideos }));
+  } catch (error) {
+    console.error('Error fetching videos:', error);
+    res.status(500).json({ error: "An error occurred while fetching videos" });
   }
 });
 
 app.get("/available-channels", async (req, res) => {
-  const channels = await prisma.channels.findMany();
-  res.json({ channels });
+  try {
+    const channels = await prisma.channels.findMany();
+    res.json(serializeBigInt({ channels }));
+  } catch (error) {
+    console.error('Error fetching channels:', error);
+    res.status(500).json({ error: "An error occurred while fetching channels" });
+  }
+});
+
+// Get featured videos - videos that performed exceptionally well compared to channel average
+app.get("/featured-videos", async (req, res) => {
+  try {
+    // Get videos from the past 2 weeks
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+    const recentVideos = await prisma.video.findMany({
+      where: {
+        publishedAt: { gte: twoWeeksAgo.toISOString() },
+        duration: { gte: 60 } // Exclude shorts
+      },
+      orderBy: { viewCount: 'desc' },
+      take: 50
+    });
+
+    // Get all channels to calculate averages
+    const channels = await prisma.channels.findMany();
+    const channelMap = new Map(channels.map(c => [sanitizeName(c.channelName), c]));
+
+    // For each recent video, calculate how it compares to channel average
+    const videosWithScore = await Promise.all(recentVideos.map(async (video) => {
+      // Get channel's average view count (from last 100 videos)
+      const channelVideos = await prisma.video.findMany({
+        where: {
+          channel: video.channel,
+          duration: { gte: 60 }
+        },
+        orderBy: { publishedAt: 'desc' },
+        take: 100,
+        select: { viewCount: true }
+      });
+
+      if (channelVideos.length === 0) return null;
+
+      const avgViews = channelVideos.reduce((sum, v) => sum + Number(v.viewCount), 0) / channelVideos.length;
+      const score = avgViews > 0 ? Number(video.viewCount) / avgViews : 0;
+
+      // Get channel info for thumbnail
+      const channelInfo = channelMap.get(video.channel);
+
+      return {
+        ...video,
+        thumbnails: video.thumbnails,
+        score,
+        avgViews: Math.round(avgViews),
+        channelThumbnail: channelInfo?.thumbnails
+      };
+    }));
+
+    // Filter out nulls and sort by score (highest relative performance)
+    const featured = videosWithScore
+      .filter(v => v !== null)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    res.json(serializeBigInt({ featured }));
+  } catch (error) {
+    console.error('Error fetching featured videos:', error);
+    res.status(500).json({ error: "An error occurred while fetching featured videos" });
+  }
 });
 
 app.post("/send-telegram-message", async (req, res) => {
@@ -232,10 +323,16 @@ app.post("/send-telegram-message", async (req, res) => {
 app.get("/channels/:subdomain", async (req, res) => {
   const { subdomain } = req.params;
   const sanitizedSubdomain = sanitizeName(subdomain);
-  const channel = await prisma.channels.findUnique({
-    where: { subdomain: sanitizedSubdomain },
-  });
-  res.json({ channel });
+
+  try {
+    const channel = await prisma.channels.findUnique({
+      where: { subdomain: sanitizedSubdomain },
+    });
+    res.json(serializeBigInt({ channel }));
+  } catch (error) {
+    console.error('Error fetching channel:', error);
+    res.status(500).json({ error: "An error occurred while fetching channel" });
+  }
 });
 
 app.get("/search-channels/:channelName", async (req, res) => {
@@ -269,7 +366,7 @@ app.get("/start-fill-database", async (req, res) => {
   try {
     if (!channelId) {
       const oldestChannel = await refreshOldestChannelData();
-      res.status(200).json({ message: "Refreshed oldest channel data successfully", oldestChannel });
+      res.status(200).json(serializeBigInt({ message: "Refreshed oldest channel data successfully", oldestChannel }));
     } else {
       const allUpsertedVideos = await upsertVideosFromChannel(channelId);
       res.status(200).json({ message: `Updated database for channel ${channelId} successfully with ${allUpsertedVideos.length} videos` });
