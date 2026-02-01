@@ -24,9 +24,17 @@ import axios from 'axios';
 dotenv.config();
 
 // Initialize Prisma client with pg adapter for Prisma 7.x
+// Use singleton pattern to prevent multiple connections in serverless
+const globalForPrisma = globalThis;
 const connectionString = process.env.POSTGRES_PRISMA_URL;
-const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter });
+
+function createPrismaClient() {
+  const adapter = new PrismaPg({ connectionString });
+  return new PrismaClient({ adapter });
+}
+
+const prisma = globalForPrisma.prisma ?? createPrismaClient();
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // Set up Express app
 const app = express();
@@ -210,8 +218,14 @@ const upsertVideosFromChannel = async (channelId) => {
   return allUpsertedVideos;
 };
 
+// Cache helper for Vercel edge caching
+const setCache = (res, seconds) => {
+  res.set('Cache-Control', `s-maxage=${seconds}, stale-while-revalidate=${seconds * 2}`);
+};
+
 // API Routes
 app.get("/version", (req, res) => {
+  setCache(res, 3600); // 1 hour
   res.json({ version: packageJson.version });
 });
 
@@ -223,6 +237,7 @@ app.get("/videos", async (req, res) => {
   }
 
   try {
+    setCache(res, 60); // 1 minute - videos update frequently
     const fromDateVideos = await getAllVideosBetweenDates(channel, fromDate);
     res.json(serializeBigInt({ channel, fromDateVideos }));
   } catch (error) {
@@ -233,6 +248,7 @@ app.get("/videos", async (req, res) => {
 
 app.get("/available-channels", async (req, res) => {
   try {
+    setCache(res, 300); // 5 minutes - channels rarely change
     const channels = await prisma.channels.findMany();
     res.json(serializeBigInt({ channels }));
   } catch (error) {
@@ -244,6 +260,7 @@ app.get("/available-channels", async (req, res) => {
 // Get featured videos - videos that performed exceptionally well compared to channel average
 app.get("/featured-videos", async (req, res) => {
   try {
+    setCache(res, 300); // 5 minutes - featured videos are computed
     // Get videos from the past 2 weeks
     const twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
@@ -328,6 +345,7 @@ app.get("/channels/:subdomain", async (req, res) => {
   const sanitizedSubdomain = sanitizeName(subdomain);
 
   try {
+    setCache(res, 300); // 5 minutes
     const channel = await prisma.channels.findUnique({
       where: { subdomain: sanitizedSubdomain },
     });

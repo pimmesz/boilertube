@@ -15,6 +15,19 @@ export default defineConfig({
     },
   },
   define: {
-    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: true,
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+  },
+  build: {
+    // Chunk splitting for better caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router'],
+          'vendor-vuetify': ['vuetify'],
+        },
+      },
+    },
+    // Increase chunk size warning limit (Vuetify is large)
+    chunkSizeWarningLimit: 600,
   },
 });
