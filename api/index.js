@@ -226,6 +226,22 @@ const upsertVideosFromChannel = async (channelId) => {
     nextPageToken = response.data.nextPageToken;
   } while (nextPageToken);
 
+  // Compute and store average view count for this channel
+  const channelVideos = await prisma.video.findMany({
+    where: { channelId: channelId },
+    select: { viewCount: true }
+  });
+
+  if (channelVideos.length > 0) {
+    const totalViews = channelVideos.reduce((sum, v) => sum + Number(v.viewCount), 0);
+    const avgViewCount = Math.round(totalViews / channelVideos.length);
+
+    await prisma.channels.update({
+      where: { id: channelId },
+      data: { avgViewCount: BigInt(avgViewCount) }
+    });
+  }
+
   return allUpsertedVideos;
 };
 
@@ -259,7 +275,7 @@ app.get("/videos", async (req, res) => {
 
 app.get("/available-channels", async (req, res) => {
   try {
-    setCache(res, 300); // 5 minutes - channels rarely change
+    setCache(res, 1800); // 30 minutes - channels rarely change
     const channels = await prisma.channels.findMany();
     res.json(serializeBigInt({ channels }));
   } catch (error) {
@@ -277,48 +293,41 @@ app.get("/featured-videos", async (req, res) => {
     const fromDate = new Date();
     fromDate.setDate(fromDate.getDate() - days);
 
-    const recentVideos = await prisma.video.findMany({
-      where: {
-        publishedAt: { gte: fromDate.toISOString() },
-        duration: { gte: 60 } // Exclude shorts
-      },
-      orderBy: { viewCount: 'desc' },
-      take: 50
-    });
-
-    // Get all channels to calculate averages
-    const channels = await prisma.channels.findMany();
-    const channelMap = new Map(channels.map(c => [sanitizeName(c.channelName), c]));
-
-    // For each recent video, calculate how it compares to channel average
-    const videosWithScore = await Promise.all(recentVideos.map(async (video) => {
-      // Get channel's average view count (from last 100 videos)
-      const channelVideos = await prisma.video.findMany({
+    // Fetch recent videos and all channels in parallel
+    const [recentVideos, channels] = await Promise.all([
+      prisma.video.findMany({
         where: {
-          channel: video.channel,
-          duration: { gte: 60 }
+          publishedAt: { gte: fromDate.toISOString() },
+          duration: { gte: 60 } // Exclude shorts
         },
-        orderBy: { publishedAt: 'desc' },
-        take: 100,
-        select: { viewCount: true }
-      });
+        orderBy: { viewCount: 'desc' },
+        take: 50
+      }),
+      prisma.channels.findMany()
+    ]);
 
-      if (channelVideos.length === 0) return null;
+    // Build channel lookup maps (by channelId and by sanitized name)
+    const channelByIdMap = new Map(channels.map(c => [c.id, c]));
+    const channelByNameMap = new Map(channels.map(c => [sanitizeName(c.channelName), c]));
 
-      const avgViews = channelVideos.reduce((sum, v) => sum + Number(v.viewCount), 0) / channelVideos.length;
-      const score = avgViews > 0 ? Number(video.viewCount) / avgViews : 0;
+    // Calculate scores using pre-computed avgViewCount
+    const videosWithScore = recentVideos.map(video => {
+      // Try to find channel by ID first, then by name
+      const channelInfo = channelByIdMap.get(video.channelId) || channelByNameMap.get(video.channel);
 
-      // Get channel info for thumbnail
-      const channelInfo = channelMap.get(video.channel);
+      if (!channelInfo || Number(channelInfo.avgViewCount) === 0) return null;
+
+      const avgViews = Number(channelInfo.avgViewCount);
+      const score = Number(video.viewCount) / avgViews;
 
       return {
         ...video,
         thumbnails: video.thumbnails,
         score,
-        avgViews: Math.round(avgViews),
-        channelThumbnail: channelInfo?.thumbnails
+        avgViews,
+        channelThumbnail: channelInfo.thumbnails
       };
-    }));
+    });
 
     // Filter out nulls and sort by score (highest relative performance)
     // Limit to 1 video per channel for diversity

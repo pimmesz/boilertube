@@ -126,7 +126,17 @@
 					{{ filter.label }}
 				</v-btn>
 			</div>
-			<div v-if="featuredVideos.length > 0" class="featured-grid">
+			<!-- Loading Skeletons for Featured Videos -->
+			<div v-if="isFeaturedLoading" class="featured-grid">
+				<div v-for="n in 3" :key="n" class="featured-card featured-card--skeleton">
+					<v-skeleton-loader type="image" :height="180"></v-skeleton-loader>
+					<div class="featured-card__content">
+						<v-skeleton-loader type="text" class="mb-2"></v-skeleton-loader>
+						<v-skeleton-loader type="text" :width="150"></v-skeleton-loader>
+					</div>
+				</div>
+			</div>
+			<div v-else-if="featuredVideos.length > 0" class="featured-grid">
 				<a
 					v-for="video in featuredVideos"
 					:key="video.id"
@@ -193,6 +203,7 @@ interface FeaturedVideo {
 const availableChannels = ref<Channel[]>([]);
 const featuredVideos = ref<FeaturedVideo[]>([]);
 const isLoading = ref(true);
+const isFeaturedLoading = ref(true);
 const error = ref('');
 const searchQuery = ref('');
 const sortBy = ref('subscribers');
@@ -275,6 +286,7 @@ const fetchAvailableChannels = async () => {
 };
 
 const fetchFeaturedVideos = async () => {
+	isFeaturedLoading.value = true;
 	try {
 		const response = await axios.get(`${getBaseUrl()}/featured-videos?days=${trendingDays.value}`);
 		featuredVideos.value = response.data.featured.map((video: any) => ({
@@ -283,6 +295,8 @@ const fetchFeaturedVideos = async () => {
 		}));
 	} catch (err) {
 		console.error('Error fetching featured videos:', err);
+	} finally {
+		isFeaturedLoading.value = false;
 	}
 };
 
@@ -522,6 +536,10 @@ onMounted(() => {
 	color: white;
 	transition: all 0.2s ease;
 	overflow: hidden;
+}
+
+.featured-card--skeleton {
+	animation: pulse 1.5s ease-in-out infinite;
 }
 
 .featured-card:hover {

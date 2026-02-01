@@ -16,6 +16,7 @@ model Channels {
   subscriberCount BigInt @default(0)
   viewCount       BigInt @default(0)
   thumbnails      String @default("no_value")
+  avgViewCount    BigInt @default(0)
 }
 
 model Video {
@@ -27,4 +28,8 @@ model Video {
   channelId   String @default("no_value")
   viewCount   BigInt @default(0)
   duration    Int    @default(0)
+
+  @@index([channelId])
+  @@index([publishedAt])
+  @@index([viewCount])
 }
