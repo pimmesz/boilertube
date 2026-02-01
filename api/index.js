@@ -373,15 +373,33 @@ app.get("/search-channels/:channelName", async (req, res) => {
 });
 
 // Example URL: /start-fill-database?channelid=UC_x5XG1OV2P6uZZ5FSM9Ttw
+// Multiple channels: /start-fill-database?channelid=UC1,UC2,UC3
 app.get("/start-fill-database", async (req, res) => {
-  const { channelid: channelId = '' } = req.query;
+  const { channelid: channelIdParam = '' } = req.query;
   try {
-    if (!channelId) {
+    if (!channelIdParam) {
       const oldestChannel = await refreshOldestChannelData();
       res.status(200).json(serializeBigInt({ message: "Refreshed oldest channel data successfully", oldestChannel }));
     } else {
-      const allUpsertedVideos = await upsertVideosFromChannel(channelId);
-      res.status(200).json({ message: `Updated database for channel ${channelId} successfully with ${allUpsertedVideos.length} videos` });
+      const channelIds = channelIdParam.split(',').map(id => id.trim()).filter(Boolean);
+      const results = [];
+
+      for (const channelId of channelIds) {
+        try {
+          const videos = await upsertVideosFromChannel(channelId);
+          results.push({ channelId, success: true, videoCount: videos.length });
+          console.log(`Added ${videos.length} videos for channel ${channelId}`);
+        } catch (err) {
+          results.push({ channelId, success: false, error: err.message });
+          console.error(`Failed to add channel ${channelId}:`, err.message);
+        }
+      }
+
+      const totalVideos = results.filter(r => r.success).reduce((sum, r) => sum + r.videoCount, 0);
+      res.status(200).json({
+        message: `Processed ${channelIds.length} channel(s) with ${totalVideos} total videos`,
+        results
+      });
     }
   } catch (error) {
     console.error(error);
