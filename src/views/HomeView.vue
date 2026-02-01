@@ -321,10 +321,30 @@ onMounted(() => {
 }
 
 .channel-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-	gap: 24px;
-	justify-items: center;
+	display: flex;
+	gap: 16px;
+	overflow-x: auto;
+	padding-bottom: 16px;
+	scroll-behavior: smooth;
+	-webkit-overflow-scrolling: touch;
+}
+
+.channel-grid::-webkit-scrollbar {
+	height: 8px;
+}
+
+.channel-grid::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 4px;
+}
+
+.channel-grid::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+}
+
+.channel-grid::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.5);
 }
 
 .channel-card {
@@ -337,8 +357,9 @@ onMounted(() => {
 	border-radius: 12px;
 	transition: all 0.2s ease;
 	background: rgba(255, 255, 255, 0.05);
-	width: 100%;
-	max-width: 160px;
+	min-width: 140px;
+	max-width: 140px;
+	flex-shrink: 0;
 	animation: fadeInUp 0.4s ease forwards;
 	opacity: 0;
 }
@@ -421,13 +442,14 @@ onMounted(() => {
 
 .error-state,
 .no-results {
-	grid-column: 1 / -1;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: 16px;
 	padding: 48px;
 	text-align: center;
+	width: 100%;
+	justify-content: center;
 }
 
 /* Featured Videos Section */
@@ -557,8 +579,12 @@ onMounted(() => {
 	}
 
 	.channel-grid {
-		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-		gap: 16px;
+		gap: 12px;
+	}
+
+	.channel-card {
+		min-width: 120px;
+		max-width: 120px;
 	}
 
 	.featured-grid {
