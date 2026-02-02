@@ -214,7 +214,7 @@ const sortOptions = [
 	{ label: 'Recently updated', value: 'updated' }
 ];
 
-const trendingDays = ref(7);
+const trendingDays = ref(30);
 const trendingFilters = [
 	{ label: '1 Week', days: 7 },
 	{ label: '1 Month', days: 30 },
