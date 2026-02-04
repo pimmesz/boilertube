@@ -143,21 +143,26 @@ const getAllVideosBetweenDates = async (channel, fromDate) => {
   return videos;
 };
 
-const refreshOldestChannelData = async () => {
-  const oldestChannel = await prisma.channels.findFirst({
-    orderBy: {
-      updatedAt: 'asc'
-    }
+const refreshOldestChannels = async (count = 3) => {
+  const oldestChannels = await prisma.channels.findMany({
+    orderBy: { updatedAt: 'asc' },
+    take: count
   });
 
-  if (oldestChannel) {
-    await upsertVideosFromChannel(oldestChannel.id);
+  const results = [];
+  for (const channel of oldestChannels) {
+    try {
+      const videos = await upsertVideosFromChannel(channel.id, { incremental: true });
+      results.push({ id: channel.id, name: channel.channelName, success: true, videoCount: videos.length });
+    } catch (err) {
+      results.push({ id: channel.id, name: channel.channelName, success: false, error: err.message });
+    }
   }
 
-  return oldestChannel;
+  return results;
 };
 
-const upsertVideosFromChannel = async (channelId) => {
+const upsertVideosFromChannel = async (channelId, { incremental = false } = {}) => {
   const youtube = getYoutubeClient();
   let nextPageToken = '';
   let allUpsertedVideos = [];
@@ -195,6 +200,7 @@ const upsertVideosFromChannel = async (channelId) => {
     }
   });
 
+  let stoppedEarly = false;
   do {
     const response = await youtube.playlistItems.list({
       part: 'snippet',
@@ -204,6 +210,19 @@ const upsertVideosFromChannel = async (channelId) => {
     });
 
     const videoIds = response.data.items.map(item => item.snippet.resourceId.videoId);
+
+    // In incremental mode, check how many videos already exist
+    // If all videos on this page exist, we've caught up — stop after upserting this page
+    if (incremental) {
+      const existingVideos = await prisma.video.findMany({
+        where: { id: { in: videoIds } },
+        select: { id: true }
+      });
+      if (existingVideos.length === videoIds.length) {
+        stoppedEarly = true;
+      }
+    }
+
     const videoDetails = await youtube.videos.list({
       part: 'statistics,contentDetails',
       id: videoIds.join(',')
@@ -238,7 +257,12 @@ const upsertVideosFromChannel = async (channelId) => {
 
     const upsertedVideos = await Promise.all(upsertPromises);
     allUpsertedVideos = allUpsertedVideos.concat(upsertedVideos);
-    console.log('Upserted videos progress: ', allUpsertedVideos.length, ' for channel: ', channelId);
+    console.log(`Upserted ${allUpsertedVideos.length} videos for ${channelId}${incremental ? ' (incremental)' : ''}`);
+
+    if (stoppedEarly) {
+      console.log(`Incremental update complete for ${channelId} — no new videos found, stopped early`);
+      break;
+    }
 
     nextPageToken = response.data.nextPageToken;
   } while (nextPageToken);
@@ -489,8 +513,8 @@ app.get("/start-fill-database", async (req, res) => {
   const { channelid: channelIdParam = '' } = req.query;
   try {
     if (!channelIdParam) {
-      const oldestChannel = await refreshOldestChannelData();
-      res.status(200).json(serializeBigInt({ message: "Refreshed oldest channel data successfully", oldestChannel }));
+      const results = await refreshOldestChannels(3);
+      res.status(200).json(serializeBigInt({ message: `Refreshed ${results.length} oldest channels (incremental)`, results }));
     } else {
       const channelIds = channelIdParam.split(',').map(id => id.trim()).filter(Boolean);
       const results = [];
