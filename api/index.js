@@ -580,6 +580,56 @@ app.get("/delete-channel", async (req, res) => {
   }
 });
 
+// Debug endpoint: condensed overview of all channels and their data status
+app.get("/channel-status", async (req, res) => {
+  try {
+    const channels = await prisma.channels.findMany({
+      orderBy: { updatedAt: 'asc' }
+    });
+
+    const statusPromises = channels.map(async (channel) => {
+      const minDuration = getMinDuration(channel.channelName);
+      const [totalVideos, qualifyingVideos, recentVideos] = await Promise.all([
+        prisma.video.count({ where: { channelId: channel.id } }),
+        prisma.video.count({ where: { channelId: channel.id, duration: { gte: minDuration } } }),
+        prisma.video.count({
+          where: {
+            channelId: channel.id,
+            duration: { gte: minDuration },
+            publishedAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString() }
+          }
+        })
+      ]);
+
+      const updatedAt = channel.updatedAt !== 'no_value' ? channel.updatedAt : null;
+      const hoursAgo = updatedAt ? Math.round((Date.now() - new Date(updatedAt).getTime()) / 3600000) : null;
+
+      return {
+        name: channel.channelName,
+        subdomain: channel.subdomain,
+        id: channel.id,
+        updatedAt: updatedAt,
+        hoursAgo: hoursAgo !== null ? `${hoursAgo}h ago` : 'never',
+        minDuration: `${minDuration}s`,
+        totalVideos,
+        qualifyingVideos,
+        recentVideos14d: recentVideos,
+        avgViewCount: Number(channel.avgViewCount)
+      };
+    });
+
+    const status = await Promise.all(statusPromises);
+
+    res.json({
+      channelCount: channels.length,
+      channels: status
+    });
+  } catch (error) {
+    console.error('Error fetching channel status:', error);
+    res.status(500).json({ error: "An error occurred while fetching channel status" });
+  }
+});
+
 // OAuth2 callback endpoint
 app.get('/generate-token', async (req, res) => {
   try {
