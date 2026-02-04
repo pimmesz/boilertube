@@ -103,7 +103,7 @@ const sanitizeName = (filename) => {
 // Minimum video duration for livesets (10 minutes = 600 seconds)
 // Colors is an exception - they have shorter single performances
 const MIN_DURATION_SECONDS = 600;
-const COLORS_CHANNEL_NAME = 'colorsxstudios';
+const COLORS_CHANNEL_NAME = 'colors';
 
 const isColorsChannel = (channelName) => {
   return sanitizeName(channelName || '') === COLORS_CHANNEL_NAME;
